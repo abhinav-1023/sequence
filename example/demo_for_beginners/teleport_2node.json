@@ -38,13 +38,13 @@
         {
             "source": "alice",
             "destination": "BSM_alice_bob",
-            "distance": 500.0,
+            "distance": 5000,
             "attenuation": 0.0002
         },
         {
             "source": "bob",
             "destination": "BSM_alice_bob",
-            "distance": 500.0,
+            "distance": 5000,
             "attenuation": 0.0002
         }
     ],
