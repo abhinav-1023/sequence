@@ -173,7 +173,8 @@ class RSVPProtocol(StackProtocol):
                 next_hop = self.next_hop_when_tracing_back(msg.path)
                 self._push(dst=None, msg=msg, next_hop=next_hop)
         else:
-            raise Exception("Unknown type of message", msg.msg_type)
+            # raise Exception("Unknown type of message", msg.msg_type)
+            pass
 
     def next_hop_when_tracing_back(self, path: list[str]) -> str:
         """the next hop when going back from the responder to the initiator

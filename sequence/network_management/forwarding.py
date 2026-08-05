@@ -122,15 +122,34 @@ class ForwardingProtocol(StackProtocol):
         Side Effects:
             Will
               call `pop` method of higher protocol.
-        """
+        # """
+        # print("\n===== FORWARDING POP =====")
+        # print("Owner :", self.owner.name)
+        # print("From  :", src)
+        # print("Payload :", msg.payload)
+        # if self.owner.name == "relay":
+        #     print("Relay forwarding using ForwardingProtocol")
+        #     self.push(dst="bob", msg=msg.payload)
+        #     return
+
+        # self._pop(src=src, msg=msg.payload)
+            
         print("\n===== FORWARDING POP =====")
         print("Owner :", self.owner.name)
         print("From  :", src)
         print("Payload :", msg.payload)
-        if self.owner.name == "relay":
-            print("Relay forwarding using ForwardingProtocol")
-            self.push(dst="bob", msg=msg.payload)
+        if self.owner.name != msg.payload.destination:
+
+            print(f"\n[{self.owner.name}] Not final destination")
+
+            self.push(
+                dst=msg.payload.destination,
+                msg=msg.payload
+            )
+
             return
+        
+        print(f"\n[{self.owner.name}] Final destination")
 
         self._pop(src=src, msg=msg.payload)
-        
+        print("Receiver =", msg.payload.receiver)
