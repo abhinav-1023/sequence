@@ -5,10 +5,11 @@ Memories will attempt to send photons through the `send_qubit` interface of node
 Photons should be routed to a BSM device for entanglement generation, or through optical hardware for purification and swapping.
 """
 from __future__ import annotations
+from collections.abc import Callable, Iterator
 from copy import copy
 from math import inf
-from typing import Any, TYPE_CHECKING, Iterator
-from collections.abc import Callable
+from typing import Any, TYPE_CHECKING
+
 from numpy import exp, array
 from scipy import stats
 

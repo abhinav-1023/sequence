@@ -106,6 +106,7 @@ class TeleportProtocol(Protocol):
         self.alice_comm_memory: Memory = None
         self.bob_comm_memory_name: str = None       # To be decided after the entangle pair is generated
         self.bob_comm_memory: Memory = None
+        self.source_comm_memory: Memory = None
         log.logger.debug(f"{self.name}: initialized (data_memory={data_memory_index})")
 
     def set_alice_comm_memory_name(self, memory_name: str):
@@ -143,9 +144,26 @@ class TeleportProtocol(Protocol):
     def alice_bell_measurement(self, reservation: Reservation):
         """ Perform Bell measurement on the entangled memory and send corrections to Bob. 
         """
+
+        print(f"ENTERED alice_bell_measurement at {self.owner.name}")
+        print(f"[{self.owner.timeline.now()}] Bell measurement on {self.owner.name}")
+        print(f"\n===== {self.owner.name} Bell Measurement =====")
+        print("source_comm_memory =", self.source_comm_memory)
+
+        if self.source_comm_memory is not None:
+            print("source key =", self.source_comm_memory.qstate_key)
         comm_key = self.alice_comm_memory.qstate_key
-        data_memory_array = self.owner.get_component_by_name(self.owner.data_memo_arr_name)
-        data_key = data_memory_array[self.data_memory_index].qstate_key
+
+        if self.source_comm_memory is None:
+            data_memory_array = self.owner.get_component_by_name(
+                self.owner.data_memo_arr_name
+            )
+
+            data_key = data_memory_array[self.data_memory_index].qstate_key
+            print("Using DataMemoryArray")
+        else:
+            data_key = self.source_comm_memory.qstate_key
+            print("Using source_comm_memory")
         log.logger.debug(f"{self.name}: alice_bell_measure data_key={data_key}, comm_key={comm_key}")
         # Perform Bell measurement
         rnd  = self.owner.get_generator().random()
@@ -155,6 +173,7 @@ class TeleportProtocol(Protocol):
         # send classical corrections to Bob
         msg = TeleportMessage(TeleportMsgType.MEASUREMENT_RESULT, bob_comm_memory_name=self.bob_comm_memory_name, x_flip=x, z_flip=z, reservation=reservation)
         self.owner.send_message(self.remote_node_name, msg)
+        print(f"Bell measurement executed on {self.owner.name}")
 
     def received_message(self, src: str, msg: TeleportMessage):
         """ Handle incoming messages, specifically teleportation corrections.
@@ -163,7 +182,22 @@ class TeleportProtocol(Protocol):
             src (str): Source of the message.
             msg (TeleportMessage): The teleportation message containing corrections.
         """
+        print("ENTER received_message")
+        print("Owner =", self.owner.name)
+        print("Source =", src)
+        print("Message =", msg)
+        print("Message type =", msg.msg_type)
+        print(
+            "RECEIVED:",
+            self.owner.name,
+            "from",
+            src,
+            "type",
+            msg.msg_type
+        )
+        print(f"\nreceived_message at {self.owner.name} from {src}")
         if msg.msg_type == TeleportMsgType.MEASUREMENT_RESULT:
+            print("Calling bob_handle_correction")
             self.bob_handle_correction(msg)
         else:
             log.logger.warning(f"{self.name}: received unknown message type {msg.type} from {src}")
@@ -175,6 +209,12 @@ class TeleportProtocol(Protocol):
         Args:
             msg (TeleportMessage): The message containing the correction bits.
         """
+        print("ENTER bob_handle_correction on", self.owner.name)
+        print("\n===== bob_handle_correction =====")
+        print("Owner:", self.owner.name)
+        print("Remote:", self.remote_node_name)
+        print("Memory:", self.bob_comm_memory_name)
+        print("x =", msg.x_flip, "z =", msg.z_flip)
         log.logger.debug(f"{self.name}: bob_handle_correction, memory={msg.bob_comm_memory_name}, x_flip={msg.x_flip}, z_flip={msg.z_flip}")
         bob_comm_memory_key = self.bob_comm_memory.qstate_key
         
@@ -186,6 +226,9 @@ class TeleportProtocol(Protocol):
             rnd = self.owner.get_generator().random()
             self.owner.timeline.quantum_manager.run_circuit(TeleportProtocol._z_flip_circuit, [bob_comm_memory_key], rnd)
             log.logger.info(f"{self.name}: Z-flip applied on memory {msg.bob_comm_memory_name}")
+       
+        print("teleport_app type =", type(self.owner.teleport_app))
+        print("teleport_app =", self.owner.teleport_app)
 
         self.owner.teleport_app.teleport_complete(bob_comm_memory_key)
 

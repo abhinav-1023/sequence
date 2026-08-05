@@ -141,6 +141,11 @@ class Node(Entity):
             sender_delay (int): sender-side delay (ps) before message is sent out on the channel (default 0).
                                 Include but not limited to processing delay, queueing delay, transmission delay, etc.
         """
+        print("\n=== SEND ===")
+        print("Sender :", self.name)
+        print("Destination :", dst)
+        print("Message :", msg)
+        print("Available Channels :", list(self.cchannels.keys()))
         log.logger.debug(f"{self.name} send message {msg} to {dst}")
 
         if priority == inf:
@@ -155,7 +160,12 @@ class Node(Entity):
         Args:
             src (str): name of node sending the message.
             msg (Message): message transmitted from node.
+
         """
+        print("\n=== RECEIVE ===")
+        print("Node :", self.name)
+        print("From :", src)
+        print("Message :", msg)
         log.logger.debug(f"{self.name} receive message {msg} from {src}")
         # signal to protocol that we've received a message
         if msg.receiver is not None:
@@ -359,6 +369,12 @@ class QuantumRouter(Node):
             src (str): name of node that sent the message.
             msg (Message): the received message.
         """
+        print("\n===== QR RECEIVE =====")
+        print("Node      =", self.name)
+        print("Source    =", src)
+        print("Receiver  =", msg.receiver)
+        print("Message   =", msg)
+        
         if self.down:
             log.logger.debug(f"{self.name} is DOWN. Dropping message {msg} from {src}")
             return
@@ -389,6 +405,11 @@ class QuantumRouter(Node):
             sender_delay (int): sender-side delay (ps) before message is sent out on the channel (default 0).
                                 Include but not limited to processing delay, queueing delay, transmission delay, etc.
         """
+        print("\n===== QR SEND =====")
+        print("Sender      =", self.name)
+        print("Destination =", dst)
+        print("Message     =", msg)
+        print("Channels    =", list(self.cchannels.keys()))
         if self.down:
             log.logger.debug(f"{self.name} is DOWN. Dropping message {msg} to {dst}")
             return
@@ -881,8 +902,22 @@ class DQCNode(QuantumRouter):
             src (str): name of node that sent the message.
             msg (Message): the received message.
         """
+        print("\n===== DQCNode.receive_message =====")
+        print("Node      =", self.name)
+        print("Source    =", src)
+        print("Receiver  =", msg.receiver)
+        print("Msg type  =", getattr(msg, "msg_type", None))
+        print("Protocol  =", getattr(msg, "protocol_type", None))
+        if msg.receiver == "test":
+            print(f"\n{self.name} received test message ({msg.bit1}, {msg.bit2})")
+
+            if self.name == "relay":
+                print("Relay forwarding to Bob")
+                self.send_message("bob", msg)
+            return
 
         log.logger.info(f"{self.name} receive message {msg} from {src}")
+
         if msg.receiver == "network_manager":
             self.network_manager.received_message(src, msg)
         elif msg.receiver == "resource_manager":

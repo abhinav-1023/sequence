@@ -72,6 +72,8 @@ class TeleportApp(RequestApp):
         Args:
             info (MemoryInfo): Information about the memory state change.
         """
+        print(">>>> ENTER RelayTeleportApp.get_memory <<<<")
+        print(info)
         log.logger.debug(f"{self.name}: get_memory, name={info.memory.name}, state={info.state}")
         # once we see our entangled half, hand it to the protocol
         if info.index in self.memo_to_reservation:

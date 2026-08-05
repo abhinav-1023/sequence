@@ -84,6 +84,12 @@ class Timeline:
 
     def schedule(self, event: "Event") -> None:
         """Method to schedule an event."""
+        print(
+            "SCHEDULE:",
+            event.process.owner.__class__.__name__,
+            event.process.activation,
+            event.time
+        )
         if type(event.process.owner) is str:
             event.process.owner = self.get_entity_by_name(event.process.owner)
         self.schedule_counter += 1
@@ -122,6 +128,12 @@ class Timeline:
 
             self.time = event.time
             log.logger.debug(f"Event #{self.run_counter}: process owner={event.process.owner}, activation={event.process.activation}")
+            print(
+                "RUNNING:",
+                event.process.owner.__class__.__name__,
+                event.process.activation,
+                self.now()
+            )
             event.process.run()
             self.run_counter += 1
 

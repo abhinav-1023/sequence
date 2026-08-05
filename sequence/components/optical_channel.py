@@ -311,6 +311,12 @@ class ClassicalChannel(OpticalChannel):
         Side Effects:
             Receiver node may receive the message (via the `receive_message` method).
         """
+        print("\n========== TRANSMIT ==========")
+        print("Channel :", self.name)
+        print("From    :", self.sender.name)
+        print("To      :", self.receiver)
+        print("Message :", message)
+        print("==============================")
 
         log.logger.info(f"{self.sender.name} send message {message} to {self.receiver} by Channel {self.name}")
         assert source == self.sender
@@ -318,4 +324,9 @@ class ClassicalChannel(OpticalChannel):
         future_time = round(self.timeline.now() + sender_delay + self.delay)
         process = Process(self.receiver, "receive_message", [source.name, message])
         event = Event(future_time, process, priority)
+        print("Future time =", future_time)
+        print("Receiver    =", self.receiver)
+        print("Process     =", process)
+        print("Event       =", event)
         self.timeline.schedule(event)
+        print("Event scheduled successfully")

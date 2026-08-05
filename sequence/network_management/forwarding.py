@@ -78,12 +78,21 @@ class ForwardingProtocol(StackProtocol):
         Side Effects:
             Will invoke `push` method of lower protocol or network manager.
         """
+        print("\n===== FORWARDING PUSH =====")
+        print("Owner      :", self.owner.name)
+        print("Destination:", dst)
+        print("Next hop   :", next_hop)
+        forwarding_table = self.forwarding_table
+        print("Table      :", forwarding_table)
+        print("Message    :", msg)
         assert dst != self.owner.name
         forwarding_table = self.forwarding_table
         new_msg = ForwardingMessage(ForwardingMessageType.OUTBOUND, self.name, msg)
+        print(f"[FORWARD] {self.owner.name} --> {next_hop} (dst={dst})")
         if dst:                                     # if dst is not None, use the forwarding table
             next_hop: str | None = forwarding_table.get(dst, None)
             if next_hop:
+                print(f"Forwarding {self.owner.name} -> {next_hop}")
                 self._push(dst=next_hop, msg=new_msg)
             else:
                 log.logger.error(f'No forwarding rule for dst {dst} at node {self.owner.name}')
@@ -102,6 +111,11 @@ class ForwardingProtocol(StackProtocol):
             msg (ForwardingMessage): message received.
 
         Side Effects:
-            Will call `pop` method of higher protocol.
+            Will
+              call `pop` method of higher protocol.
         """
+        print("\n===== FORWARDING POP =====")
+        print("Owner :", self.owner.name)
+        print("From  :", src)
+        print("Payload :", msg.payload)
         self._pop(src=src, msg=msg.payload)

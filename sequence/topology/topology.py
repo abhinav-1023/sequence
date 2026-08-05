@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..kernel.timeline import Timeline
 
+from ..components.optical_channel import ClassicalChannel, QuantumChannel
 from .node import Node
-from ..components.optical_channel import QuantumChannel, ClassicalChannel
 
 
 class Topology(ABC):
