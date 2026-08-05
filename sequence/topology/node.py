@@ -913,7 +913,7 @@ class DQCNode(QuantumRouter):
 
             if self.name == "relay":
                 print("Relay forwarding to Bob")
-                self.send_message("bob", msg)
+                # self.send_message("bob", msg)
             return
 
         log.logger.info(f"{self.name} receive message {msg} from {src}")

@@ -18,6 +18,7 @@ from ...utils import log
 # type labels for routing protocols:
 ROUTING_STATIC      = 'routing_static'
 ROUTING_DISTRIBUTED = 'routing_distributed'
+ROUTING_XY = "routing_xy"
 
 
 class RoutingProtocol(Protocol, ABC):

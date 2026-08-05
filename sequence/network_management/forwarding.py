@@ -5,6 +5,8 @@ This module defines the `ForwardingProtocol` and `ForwardingMessage` classes.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+
+
 if TYPE_CHECKING:
     from ..topology.node import QuantumRouter
 
@@ -89,8 +91,15 @@ class ForwardingProtocol(StackProtocol):
         forwarding_table = self.forwarding_table
         new_msg = ForwardingMessage(ForwardingMessageType.OUTBOUND, self.name, msg)
         print(f"[FORWARD] {self.owner.name} --> {next_hop} (dst={dst})")
-        if dst:                                     # if dst is not None, use the forwarding table
+        if dst:  
+                                               # if dst is not None, use the forwarding table
             next_hop: str | None = forwarding_table.get(dst, None)
+            print("\n===== XY ROUTING =====")
+            print("Current Node :", self.owner.name)
+            print("Final Destination :", dst)
+            print("Forwarding Table :", forwarding_table)
+            print("Next Hop Selected :", next_hop)
+            print("======================")
             if next_hop:
                 print(f"Forwarding {self.owner.name} -> {next_hop}")
                 self._push(dst=next_hop, msg=new_msg)
@@ -118,4 +127,10 @@ class ForwardingProtocol(StackProtocol):
         print("Owner :", self.owner.name)
         print("From  :", src)
         print("Payload :", msg.payload)
+        if self.owner.name == "relay":
+            print("Relay forwarding using ForwardingProtocol")
+            self.push(dst="bob", msg=msg.payload)
+            return
+
         self._pop(src=src, msg=msg.payload)
+        

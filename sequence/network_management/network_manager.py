@@ -11,14 +11,13 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from ..protocol import StackProtocol
     from ..topology.node import QuantumRouter
-
 from ..components.memory import MemoryArray
 from ..message import Message
 from ..utils import log
 from .forwarding import ForwardingProtocol
 from .memory_timecard import MemoryTimeCard
 from .reservation import Reservation
-from .routing import RoutingProtocol, ROUTING_STATIC
+from .routing import RoutingProtocol, ROUTING_STATIC, ROUTING_XY
 from .rsvp import RSVPMessage, RSVPMsgType, RSVPProtocol
 
 
@@ -147,8 +146,11 @@ class DistributedNetworkManager(NetworkManager):
             component_templates = {}
         self.protocol_stack = []
         self.forwarding_table = {}
-        routing_type = component_templates.get('routing', ROUTING_STATIC)
+        # routing_type = component_templates.get('routing', ROUTING_STATIC)
+        routing_type = ROUTING_XY
         self.routing_protocol = RoutingProtocol.create(owner, name=routing_type, protocol_type=routing_type)
+        print("Routing Type : ", routing_type)
+        print("Routing Protocol : ", type(self.routing_protocol).__name__)
         # Create and load the stack to protocol_stack
         protocols: list = self.create_stack()
         self.load_stack(protocols)
@@ -162,6 +164,7 @@ class DistributedNetworkManager(NetworkManager):
         return self.protocol_stack[0]
 
     def init(self):
+        print("INIT =", type(self.routing_protocol).__name__)
         self.routing_protocol.init()
 
     def get_forwarding_table(self) -> dict[str, str]:

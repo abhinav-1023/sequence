@@ -76,6 +76,9 @@ class DQCNetTopo(Topo):
                 data_size = node.get(self.DATA_MEMO_ARRAY_SIZE, 0)
                 comm_size = node.get(self.MEMO_ARRAY_SIZE, 0)
                 node_obj = DQCNode(name, self.tl, memo_size=comm_size, data_memo_size=data_size, component_templates=template)
+                node_obj.x = node.get("x", 0)
+                node_obj.y = node.get("y", 0)
+                node_obj.z = node.get("z", 0)
             else:
                 raise ValueError(f"Unknown type of node '{node_type}'")
 

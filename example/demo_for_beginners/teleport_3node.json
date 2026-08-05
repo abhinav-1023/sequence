@@ -12,6 +12,9 @@
         {
             "name": "alice",
             "type": "DQCNode",
+            "x": 0,
+            "y": 0,
+            "z": 0,
             "seed": 0,
             "memo_size": 1,
             "data_memo_size": 1,
@@ -21,6 +24,9 @@
         {
             "name": "relay",
             "type": "DQCNode",
+            "x":1,
+            "y": 0,
+            "z": 0,
             "seed": 2,
             "memo_size": 2,
             "data_memo_size": 1,
@@ -30,6 +36,9 @@
         {
             "name": "bob",
             "type": "DQCNode",
+            "x":3,
+            "y": 0,
+            "z": 0,
             "seed": 1,
             "memo_size": 1,
             "data_memo_size": 1,
