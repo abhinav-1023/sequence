@@ -43,6 +43,7 @@ class DQCNetTopo(Topo):
         self._add_timeline(config)
         self._map_bsm_routers(config)
         self._add_nodes(config)
+        self._assign_coordinates()
         self._add_bsm_node_to_router()
         self._add_qchannels(config)
         self._add_cchannels(config)
@@ -63,6 +64,7 @@ class DQCNetTopo(Topo):
 
     def _add_nodes(self, config: dict):
         for node in config[Topo.ALL_NODE]:
+
             seed = node[Topo.SEED]
             node_type = node[Topo.TYPE]
             name = node[Topo.NAME]
@@ -70,20 +72,36 @@ class DQCNetTopo(Topo):
             template = self.templates.get(template_name, {})
 
             if node_type == self.BSM_NODE:
+
                 others = self.bsm_to_router_map[name]
-                node_obj = BSMNode(name, self.tl, others, component_templates=template)
+
+                node_obj = BSMNode(
+                    name,
+                    self.tl,
+                    others,
+                    component_templates=template
+                )
+
             elif node_type == self.DQC_NODE:
+
                 data_size = node.get(self.DATA_MEMO_ARRAY_SIZE, 0)
                 comm_size = node.get(self.MEMO_ARRAY_SIZE, 0)
-                node_obj = DQCNode(name, self.tl, memo_size=comm_size, data_memo_size=data_size, component_templates=template)
-                node_obj.x = node.get("x", 0)
-                node_obj.y = node.get("y", 0)
-                node_obj.z = node.get("z", 0)
+
+                node_obj = DQCNode(
+                    name,
+                    self.tl,
+                    memo_size=comm_size,
+                    data_memo_size=data_size,
+                    component_templates=template
+                )
+
             else:
                 raise ValueError(f"Unknown type of node '{node_type}'")
 
             node_obj.set_seed(seed)
             self.nodes[node_type].append(node_obj)
+
+            
 
     def _add_bsm_node_to_router(self):
         for bsm in self.bsm_to_router_map:
@@ -162,6 +180,22 @@ class DQCNetTopo(Topo):
             else:
                 raise NotImplementedError("Unknown type of quantum connection")
 
+    def _assign_coordinates(self):
+
+        x = 0
+
+        for node in self.nodes[self.DQC_NODE]:
+
+            node.x = x
+            node.y = 0
+            node.z = 0
+
+            print(
+                node.name,
+                "->",
+                (node.x,node.y,node.z)
+            )
+            x += 1
     def _generate_forwarding_table(self, config: dict):
         """For static routing."""
         graph = Graph()

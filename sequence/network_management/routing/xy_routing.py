@@ -3,18 +3,26 @@ from .routing_base import RoutingProtocol, ROUTING_XY
 @RoutingProtocol.register(ROUTING_XY)
 class XYRoutingProtocol(RoutingProtocol):
     def init(self):
-            def init(self):
-                print("\n===== XY ROUTING INIT =====")
-                print("Current Node :", self.owner.name)
-                print("Coordinate   :", self.owner.x, self.owner.y, self.owner.z)
-                print("===========================\n")
+        
+            print("\n===== XY ROUTING INIT =====")
+            print("Current Node :", self.owner.name)
+            print("Coordinate   :", self.owner.x, self.owner.y, self.owner.z)
+            print("===========================\n")
     def __init__(self, owner, name):
         super().__init__(owner, name, protocol_type=ROUTING_XY)
 
     
 
     def received_message(self, src, msg):
-        pass
+        print("\n===== XY ROUTING Received Message =====")
+
+        if self.owner.name == msg.destination:
+            print("Message Delivered")
+            return
+
+        next_node = self.next_hop(...)
+
+        self.owner.send_message(next_node, msg)
         # print("XY Routing Protocol")
         # dst_name = msg.reservation.responder
 

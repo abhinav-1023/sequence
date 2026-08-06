@@ -36,6 +36,8 @@ from ..resource_management.resource_manager import ResourceManager
 from ..network_management.network_manager import NetworkManager
 from ..utils.encoding import *
 from ..utils import log
+from ..network_management.routing.xy_routing import XYRoutingProtocol
+
 
 
 class Node(Entity):
@@ -166,6 +168,8 @@ class Node(Entity):
         print("Node :", self.name)
         print("From :", src)
         print("Message :", msg)
+        if msg.receiver == "xy_routing":
+            self.xy_routing.received_message(src, msg)
         log.logger.debug(f"{self.name} receive message {msg} from {src}")
         # signal to protocol that we've received a message
         if msg.receiver is not None:
@@ -895,7 +899,13 @@ class DQCNode(QuantumRouter):
         self.teledata_app = None
         self.telegate_app = None
 
-    def receive_message(self, src: str, msg: "Message") -> None:
+        self.xy_routing = XYRoutingProtocol(
+            self,
+            f"{name}.xy_routing"
+        )
+
+    def receive_message(self, src: str, msg: "Message") :
+        
         """Determine what to do when a message is received, based on the msg.receiver.
 
         Args:
@@ -908,6 +918,8 @@ class DQCNode(QuantumRouter):
         print("Receiver  =", msg.receiver)
         print("Msg type  =", getattr(msg, "msg_type", None))
         print("Protocol  =", getattr(msg, "protocol_type", None))
+        if msg.receiver == "xy_routing":
+            self.xy_routing.received_message(src, msg)
         if msg.receiver == "test":
             print(f"\n{self.name} received test message ({msg.bit1}, {msg.bit2})")
 
@@ -922,6 +934,8 @@ class DQCNode(QuantumRouter):
             self.network_manager.received_message(src, msg)
         elif msg.receiver == "resource_manager":
             self.resource_manager.received_message(src, msg)
+        elif msg.receiver == "xy_routing":
+            self.xy_routing.received_message(src, msg)
         elif msg.receiver == "teleport_app":
             self.teleport_app.received_message(src, msg)
         elif msg.receiver == "teledata_app":

@@ -311,7 +311,7 @@ class ClassicalChannel(OpticalChannel):
         Side Effects:
             Receiver node may receive the message (via the `receive_message` method).
         """
-        print("\n========== TRANSMIT ==========")
+        print("\n==========Classical TRANSMIT ==========")
         print("Channel :", self.name)
         print("From    :", self.sender.name)
         print("To      :", self.receiver)
