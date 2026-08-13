@@ -409,11 +409,7 @@ class QuantumRouter(Node):
             sender_delay (int): sender-side delay (ps) before message is sent out on the channel (default 0).
                                 Include but not limited to processing delay, queueing delay, transmission delay, etc.
         """
-        print("\n===== QR SEND =====")
-        print("Sender      =", self.name)
-        print("Destination =", dst)
-        print("Message     =", msg)
-        print("Channels    =", list(self.cchannels.keys()))
+        
         if self.down:
             log.logger.debug(f"{self.name} is DOWN. Dropping message {msg} to {dst}")
             return

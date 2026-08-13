@@ -285,8 +285,14 @@ class ResourceManager:
         self.rule_manager.load(rule)
 
         for memory_info in self.memory_manager:  # iterate through each memory, and check if the rule is valid on each memory
-            memories_info = rule.is_valid(memory_info)  # is valid means condition is satisfied
+            memories_info = rule.is_valid(memory_info) 
+             # is valid means condition is satisfied
             if len(memories_info) > 0:
+                print("\n******** RULE DO FROM LOAD ********")
+                print("Node   :", self.owner.name)
+                print("Memory :", [info.memory.name for info in memories_info])
+                print("Rule   :", rule)
+                print("************************************")
                 rule.do(memories_info)
                 for info in memories_info:
                     info.to_occupied()
@@ -353,6 +359,11 @@ class ResourceManager:
         for rule in self.rule_manager:
             memories_info = rule.is_valid(memo_info)
             if len(memories_info) > 0:
+                print("\n******** RULE DO FROM UPDATE ********")
+                print("Node   :", self.owner.name)
+                print("Memory :", [info.memory.name for info in memories_info])
+                print("Rule   :", rule)
+                print("**************************************")
                 rule.do(memories_info)
                 for info in memories_info:
                     info.to_occupied()
@@ -378,10 +389,19 @@ class ResourceManager:
                 function used to evaluate condition on distant node.
             req_args (dict[str, Any]): arguments for req_cond_func.
         """
+        print("\n===== SEND REQUEST ENTRY =====")
+        print("Node      :", self.owner.name)
+        print("Req dst   :", req_dst)
+        print("Protocol  :", protocol.name)
 
         protocol.owner = self.owner
         if req_dst is None:
             self.waiting_protocols.append(protocol)
+            print("\n===== WAITING LIST =====")
+            print("Node :", self.owner.name)
+            print("Added protocol :", protocol.name)
+            print("Waiting count :", len(self.waiting_protocols))
+            print("Protocols :", [p.name for p in self.waiting_protocols])
             return
         if protocol not in self.pending_protocols:
             self.pending_protocols.append(protocol)
@@ -390,85 +410,279 @@ class ResourceManager:
                                      memories=memo_names, req_condition_func=req_condition_func, req_args=req_args)
         self.owner.send_message(req_dst, msg)
         log.logger.debug(f"{self.owner.name} send {msg.msg_type.name} message to {req_dst}")
-
     def received_message(self, src: str, msg: ResourceManagerMessage) -> None:
         """Method to receive resource manager messages.
 
-        Messages come in 5 types, as detailed in the `ResourceManagerMessage` class.
-
-        Args:
-            src (str): name of the node that sent the message.
-            msg (ResourceManagerMessage): message received.
+        Messages come in 5 types, as detailed in the ResourceManagerMessage class.
         """
 
-        log.logger.debug(f"{self.owner.name} resource manager receive message from {src}: {msg}")
+        print("\n===== RESOURCE MANAGER =====")
+        print("Node      :", self.owner.name)
+        print("Source    :", src)
+        print("Msg Type  :", msg.msg_type)
+
+        if hasattr(msg, "is_approved"):
+            print("Approved  :", msg.is_approved)
+
+        print("===========================")
+
+        log.logger.debug(
+            f"{self.owner.name} resource manager receive message "
+            f"from {src}: {msg}"
+        )
+
         match msg.msg_type:
+
+            # ============================================================
+            # REQUEST
+            # ============================================================
             case ResourceManagerMsgType.REQUEST:
-                # select the wait-for-request protocol to respond to the message
-                protocol = msg.req_condition_func(self.waiting_protocols, msg.req_args)
+
+                print("\n===== BEFORE EG MATCH =====")
+                print("Node :", self.owner.name)
+
+                print(
+                    "Waiting protocols :",
+                    [p.name for p in self.waiting_protocols]
+                )
+
+                for p in self.waiting_protocols:
+                    print(
+                        "Protocol :", p.name,
+                        "| Remote :", getattr(p, "remote_node_name", None),
+                        "| Rule :", p.rule,
+                        "| Reservation :",
+                        p.rule.get_reservation()
+                        if p.rule is not None else None
+                    )
+
+                print("Request name :", msg.req_args.get("name"))
+
+                print(
+                    "Request reservation :",
+                    msg.req_args.get("reservation")
+                )
+
+                print("==========================")
+
+                protocol = msg.req_condition_func(
+                    self.waiting_protocols,
+                    msg.req_args
+                )
+
+                # --------------------------------------------------------
+                # MATCH FOUND
+                # --------------------------------------------------------
                 if protocol is not None:
-                    protocol.set_others(msg.ini_protocol_name, msg.ini_node_name, msg.ini_memories_name)
-                    memo_names = [memo.name for memo in protocol.memories]
-                    new_msg = ResourceManagerMessage(ResourceManagerMsgType.RESPONSE, protocol=msg.ini_protocol_name,
-                                node=msg.ini_node_name, memories=msg.ini_memories_name, is_approved=True,
-                                paired_protocol=protocol.name, paired_node=self.owner.name, paired_memories=memo_names)
-                    self.owner.send_message(src, new_msg)
-                    self.waiting_protocols.remove(protocol)
-                    self.owner.protocols.append(protocol)
-                    protocol.start()
-                else:
-                    # none of the self.waiting_protocol satisfy the req_condition_func --> is_approved=False
-                    new_msg = ResourceManagerMessage(ResourceManagerMsgType.RESPONSE, protocol=msg.ini_protocol_name,
-                                                    node=msg.ini_node_name, memories=msg.ini_memories_name, is_approved=False,
-                                                    paired_protocol=None, paired_node=None, paired_memories=None)
+
+                    print("\n===== EG MATCH FOUND =====")
+                    print("Node     :", self.owner.name)
+                    print("Protocol :", protocol.name)
+                    print("==========================")
+
+                    protocol.set_others(
+                        msg.ini_protocol_name,
+                        msg.ini_node_name,
+                        msg.ini_memories_name
+                    )
+
+                    memo_names = [
+                        memo.name for memo in protocol.memories
+                    ]
+
+                    new_msg = ResourceManagerMessage(
+                        ResourceManagerMsgType.RESPONSE,
+                        protocol=msg.ini_protocol_name,
+                        node=msg.ini_node_name,
+                        memories=msg.ini_memories_name,
+                        is_approved=True,
+                        paired_protocol=protocol.name,
+                        paired_node=self.owner.name,
+                        paired_memories=memo_names
+                    )
+
                     self.owner.send_message(src, new_msg)
 
+                    self.waiting_protocols.remove(protocol)
+
+                    self.owner.protocols.append(protocol)
+
+                    protocol.start()
+
+                # --------------------------------------------------------
+                # NO MATCH
+                # --------------------------------------------------------
+                else:
+
+                    print("\n===== EG MATCH FAILED =====")
+                    print("Node :", self.owner.name)
+                    print("No matching protocol")
+                    print("===========================")
+
+                    new_msg = ResourceManagerMessage(
+                        ResourceManagerMsgType.RESPONSE,
+                        protocol=msg.ini_protocol_name,
+                        node=msg.ini_node_name,
+                        memories=msg.ini_memories_name,
+                        is_approved=False,
+                        paired_protocol=None,
+                        paired_node=None,
+                        paired_memories=None
+                    )
+
+                    self.owner.send_message(src, new_msg)
+
+            # ============================================================
+            # RESPONSE
+            # ============================================================
             case ResourceManagerMsgType.RESPONSE:
+
                 protocol_name = msg.ini_protocol_name
+
                 protocol: EntanglementProtocol | None = None
+
                 for p in self.pending_protocols:
                     if p.name == protocol_name:
                         protocol = p
                         break
-                else:  # no matched pending protocols
+
+                else:
+                    # No matching pending protocol
                     if msg.is_approved:
-                        self.release_remote_protocol(src, msg.paired_protocol)
+                        self.release_remote_protocol(
+                            src,
+                            msg.paired_protocol
+                        )
+
                     return
 
+                # --------------------------------------------------------
+                # APPROVED
+                # --------------------------------------------------------
                 if msg.is_approved:
-                    protocol.set_others(msg.paired_protocol, msg.paired_node, msg.paired_memories)  # pairing (cost one round-trip-time)
+
+                    print("\n===== EG REQUEST APPROVED =====")
+                    print("Node             :", self.owner.name)
+                    print("Protocol         :", protocol.name)
+                    print("Paired protocol  :", msg.paired_protocol)
+                    print("Paired node      :", msg.paired_node)
+                    print("===============================")
+
+                    protocol.set_others(
+                        msg.paired_protocol,
+                        msg.paired_node,
+                        msg.paired_memories
+                    )
+
                     if protocol.is_ready():
+
                         self.pending_protocols.remove(protocol)
+
                         self.owner.protocols.append(protocol)
+
                         protocol.owner = self.owner
+
                         protocol.start()
+
+                # --------------------------------------------------------
+                # REJECTED
+                # --------------------------------------------------------
                 else:
-                    protocol.rule.protocols.remove(protocol)
+
+                    print("\n===== EG REQUEST REJECTED =====")
+                    print("Node     :", self.owner.name)
+                    print("Protocol :", protocol.name)
+
+                    if protocol.rule is not None:
+                        if protocol in protocol.rule.protocols:
+                            protocol.rule.protocols.remove(protocol)
+
                     for memory in protocol.memories:
+
+                        print("Memory   :", memory.name)
+
                         memory.detach(protocol)
                         memory.attach(memory.memory_array)
-                        info = self.memory_manager.get_info_by_memory(memory)
-                        if info.remote_node is None:
-                            self.update(None, memory, MemoryInfo.RAW)
-                        else:
-                            self.update(None, memory, MemoryInfo.ENTANGLED)
-                    self.pending_protocols.remove(protocol)
 
+                        info = self.memory_manager.get_info_by_memory(
+                            memory
+                        )
+
+                        print("Old state:", info.state)
+
+                        # IMPORTANT:
+                        # Do NOT call self.update() here.
+                        #
+                        # self.update() immediately checks all rules again.
+                        # That was causing:
+                        #
+                        # RAW -> rule.do() -> EG REQUEST -> Bob
+                        # -> False -> RAW -> rule.do() -> ...
+                        #
+                        # Instead, only update the memory state.
+
+                        if info.remote_node is None:
+
+                            print(
+                                "Setting memory state to RAW "
+                                "without re-triggering rules"
+                            )
+
+                            self.memory_manager.update(
+                                memory,
+                                MemoryInfo.RAW
+                            )
+
+                        else:
+
+                            print(
+                                "Setting memory state to ENTANGLED "
+                                "without re-triggering rules"
+                            )
+
+                            self.memory_manager.update(
+                                memory,
+                                MemoryInfo.ENTANGLED
+                            )
+
+                    if protocol in self.pending_protocols:
+                        self.pending_protocols.remove(protocol)
+
+                    print("==============================")
+
+            # ============================================================
+            # RELEASE PROTOCOL
+            # ============================================================
             case ResourceManagerMsgType.RELEASE_PROTOCOL:
+
                 for p in self.owner.protocols:
+
                     if p.name == msg.protocol:
                         p.release()
 
+            # ============================================================
+            # RELEASE MEMORY
+            # ============================================================
             case ResourceManagerMsgType.RELEASE_MEMORY:
+
                 target_id = msg.memory
+
                 for protocol in self.owner.protocols:
+
                     for memory in protocol.memories:
+
                         if memory.name == target_id:
                             protocol.release()
                             return
-            
+
+            # ============================================================
+            # EARLY EXPIRE
+            # ============================================================
             case ResourceManagerMsgType.EARLY_EXPIRE:
-                self.expire_rules_by_reservation(msg.reservation)
+
+                self.expire_rules_by_reservation(
+                    msg.reservation
+                )
 
     def memory_expire(self, memory: Memory):
         """Method to receive memory expiration events."""

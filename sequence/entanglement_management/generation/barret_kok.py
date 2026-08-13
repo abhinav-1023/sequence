@@ -67,6 +67,7 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
         """
 
         # to avoid start after protocol removed
+
         if self not in self.owner.protocols:
             return
 
@@ -226,6 +227,13 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
         self.memory.entangled_memory['node_id'] = self.remote_node_name
         self.memory.entangled_memory['memo_id'] = self.remote_memo_id
         self.memory.fidelity = self.memory.raw_fidelity
+
+        print("\n===== ENTANGLEMENT SUCCESS =====")
+        print("Node        :", self.owner.name)
+        print("Remote Node :", self.remote_node_name)
+        print("Memory      :", self.memory.name)
+        print("Fidelity    :", self.memory.fidelity)
+        print("===============================\n")
         metrics.record(
             EventTypes.EG_SUCCESS,
             self.owner.name,

@@ -98,18 +98,25 @@ class RelayTeleportApp(RequestApp):
         Args:
             info (MemoryInfo): Information about the memory state change.
         """
-        print(">>>> ENTER RelayTeleportApp.get_memory <<<<")
-        print(info)
+        print("\n=====  Relay TELEPORT APP GET MEMORY =====")
+        print("Node        :", self.node.name)
+        print("Memory      :", info.memory.name)
+        print("State       :", info.state)
+        print("Remote      :", info.remote_node)
+        print("Remote memo :", info.remote_memo)
+        print("Index       :", info.index)
+        print("Reservation :", self.memo_to_reservation)
+
         print(
-            f"[{self.node.timeline.now()}] "
-            f"Node={self.node.name}, "
-            f"Memory={info.memory.name}, "
-            f"Remote={info.remote_node}, "
-            f"State={info.state}"
+            "Teleport protocols:",
+            [
+                (p.name, p.alice, p.remote_node_name)
+                for p in self.teleport_protocols
+            ]
         )
-        print("info.index =", info.index)
-        print("memo_to_reservation =", self.memo_to_reservation)
-        print(f"Memory index={info.index}, "f"Memory={info.memory.name}, "f"Remote={info.remote_node}")
+
+        print("===================================")
+
         log.logger.debug(f"{self.name}: get_memory, name={info.memory.name}, state={info.state}")
         # once we see our entangled half, hand it to the protocol
         print(

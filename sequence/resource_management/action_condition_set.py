@@ -66,56 +66,116 @@ TempMemory = cast("Memory", cast(object, None))
 
 
 # Entanglement Generation Action-Condition-Match
-def eg_rule_action_await(memories_info: list[MemoryInfo], args: Arguments) -> ActionReturn:
-    """Action function used to create an entanglement generation protocol instance and await a Resource Manager request.
+def eg_rule_action_await(
+    memories_info: list[MemoryInfo],
+    args: Arguments
+) -> ActionReturn:
 
-    Rules with this action are created on all nodes other than the initiator, i.e., where args['index'] > 0.
-    The initiator node always creates a request using `eg_rule_action_request`.
-    
-    Args:
-        memories_info: the list of memory info that satisfy the condition function
-        args: the arguments defined in the rule; should contain "mid", "path", and "index"
-
-    Returns:
-        ActionReturn: the protocol to be executed, None, None, None.
-            (this protocol does not send a Resource Manager request, but waits for a request from another node)
+    """Action function used to create an entanglement generation
+    protocol instance and await a Resource Manager request.
     """
-    memories: list[Memory] = [info.memory for info in memories_info]
+
+    print("\n===== EG AWAIT =====")
+
+    memories: list[Memory] = [
+        info.memory for info in memories_info
+    ]
+
+    if not memories:
+        print("No memory found")
+        return None, [None], [None], [None]
+
     memory: Memory = memories[0]
+
+    print("Node :", memory.memory_array.owner.name)
+    print("Memory :", memory.name)
+
     mid = args["mid"]
     path = args["path"]
     index = args["index"]
-    protocol = EntanglementGenerationA.create(owner=TempNode, name=f"EGA.{memory.name}",
-                                              middle=mid, other=path[index - 1], memory=memory)
+
+    protocol = EntanglementGenerationA.create(
+        owner=TempNode,
+        name=f"EGA.{memory.name}",
+        middle=mid,
+        other=path[index - 1],
+        memory=memory
+    )
+
+    print("Protocol Created :", protocol.name)
+
+    print("\n===== PROTOCOL INITIALIZED =====")
+    print("Node          :", memory.memory_array.owner.name)
+    print("Protocol Name :", protocol.name)
+    print("Protocol Type :", type(protocol).__name__)
+
     return protocol, [None], [None], [None]
 
 
-def eg_rule_action_request(memories_info: list[MemoryInfo], args: Arguments) -> ActionReturn:
-    """Action function used to create an entanglement generation protocol instance and send a Resource Manager request.
+# def eg_rule_action_request(memories_info: list[MemoryInfo], args: Arguments) -> ActionReturn:
+#     """Action function used to create an entanglement generation protocol instance and send a Resource Manager request.
 
-    Rules with this action are created on all nodes other than the responder, i.e., where args['index'] < len(args['path']) - 1.
-    The responder always awaits a request using `eg_rule_action_await`.
+#     Rules with this action are created on all nodes other than the responder, i.e., where args['index'] < len(args['path']) - 1.
+#     The responder always awaits a request using `eg_rule_action_await`.
     
-    Args:
-        memories_info: the list of memory info that satisfy the condition function
-        args: the arguments defined in the rule.
-            Should contain "mid" (the name of the corresponding BSM node), "path",
-            and "index" (the index of the current node in the path).
+#     Args:
+#         memories_info: the list of memory info that satisfy the condition function
+#         args: the arguments defined in the rule.
+#             Should contain "mid" (the name of the corresponding BSM node), "path",
+#             and "index" (the index of the current node in the path).
 
-    Returns:
-        ActionReturn: the protocol to be executed, the destination of the request, the request function,
-            and the arguments for request function
-    """
+#     Returns:
+#         ActionReturn: the protocol to be executed, the destination of the request, the request function,
+#             and the arguments for request function
+#     """
+#     mid = args["mid"]
+#     path = args["path"]
+#     index = args["index"]
+#     memories = [info.memory for info in memories_info]
+#     memory = memories[0]
+#     protocol = EntanglementGenerationA.create(TempNode, "EGA." + memory.name, mid, path[index + 1], memory)
+#     req_args = {"name": args["name"], "reservation": args["reservation"]}
+#     return protocol, [path[index + 1]], [eg_match_func], [req_args]
+
+def eg_rule_action_request(
+    memories_info: list[MemoryInfo],
+    args: Arguments
+) -> ActionReturn:
+
+    print("\n===== EG REQUEST ACTION =====")
+    print("Path  :", args["path"])
+    print("Index :", args["index"])
+    print("============================")
+
     mid = args["mid"]
     path = args["path"]
     index = args["index"]
+
     memories = [info.memory for info in memories_info]
     memory = memories[0]
-    protocol = EntanglementGenerationA.create(TempNode, "EGA." + memory.name, mid, path[index + 1], memory)
-    req_args = {"name": args["name"], "reservation": args["reservation"]}
+
+    print("Node       :", memory.memory_array.owner.name)
+    print("Memory     :", memory.name)
+    print("Next node  :", path[index + 1])
+
+    protocol = EntanglementGenerationA.create(
+        TempNode,
+        "EGA." + memory.name,
+        mid,
+        path[index + 1],
+        memory
+    )
+
+    req_args = {
+        "name": args["name"],
+        "reservation": args["reservation"]
+    }
+
+    print("Protocol   :", protocol.name)
+    print("Request to :", path[index + 1])
+    print("============================")
+
     return protocol, [path[index + 1]], [eg_match_func], [req_args]
-
-
 def eg_rule_condition(memory_info: MemoryInfo, _manager: MemoryManager, args: Arguments) -> list[MemoryInfo]:
     """Condition function used by entanglement generation protocol on nodes.
     
@@ -126,6 +186,8 @@ def eg_rule_condition(memory_info: MemoryInfo, _manager: MemoryManager, args: Ar
     Returns:
         list[MemoryInfo]: the list of MemoryInfo that satisfy the condition
     """
+    memory_indices = args["memory_indices"]
+    
     memory_indices = args["memory_indices"]
     if memory_info.state == "RAW" and memory_info.index in memory_indices:
         return [memory_info]
@@ -145,13 +207,26 @@ def eg_match_func(protocols: list[EntanglementProtocol], args: Arguments) -> Ent
     """
     name = args["name"]
     reservation = args["reservation"]
+    print("\n===== EG MATCH =====")
+    print("Protocols waiting:", len(protocols))
+    print("Expected name    :", name)
+    print("Reservation ID   :", reservation.identity)
     for protocol in protocols:
+        print("----------------")
+        print("Protocol :", type(protocol).__name__)
+        print("Remote   :", getattr(protocol, "remote_node_name", None))
+        print("Rule     :", protocol.rule)
         # Select correct EntanglementGenerationA protocol.
         if (isinstance(protocol, EntanglementGenerationA)
                 and protocol.remote_node_name == name
                 and protocol.rule is not None
                 and protocol.rule.get_reservation() == reservation):
+            print("Checking", protocol.name)
             return protocol
+
+    
+    print("No matching protocol found")
+
     return None
 
 
@@ -179,28 +254,44 @@ def ep_rule_action_request(memories_info: list[MemoryInfo], _args: Arguments) ->
     return protocol, dsts, req_funcs, req_args
 
 
-def ep_rule_action_await(memories_info: list[MemoryInfo], _args: Arguments) -> ActionReturn:
-    """Action function used to create an entanglement purification protocol instance and await a Resource Manager request.
+def ep_rule_action_await(
+    memories_info: list[MemoryInfo],
+    _args: Arguments
+) -> ActionReturn:
 
-    Rules with this action are created on all nodes other than the responder, i.e., where args['index'] < len(args['path']) - 1.
-    The responder node always creates a request using `ep_rule_action_request`.
-    
-    Args:
-        memories_info: the list of memory info that satisfy the condition function
-        _args: the arguments defined in the rule (not used in this action function)
-
-    Returns:
-        ActionReturn: the protocol to be executed, None, None, None.
-            (this protocol does not send Resource Manager request, but wait for the request from the other node)
+    """Action function used to create an entanglement purification
+    protocol instance and await a Resource Manager request.
     """
+
+    print("\n===== EP AWAIT =====")
+
     memories = [info.memory for info in memories_info]
-    name = "EP.%s" % memories[0].name
-    protocol = BBPSSWProtocol.create(TempNode, name, memories[0], TempMemory)
+
+    if not memories:
+        print("No memories found")
+        return None, [None], [None], [None]
+
+    memory = memories[0]
+
+    print("Node   :", memory.memory_array.owner.name)
+    print("Memory :", memory.name)
+
+    name = "EP.%s" % memory.name
+
+    protocol = BBPSSWProtocol.create(
+        TempNode,
+        name,
+        memory,
+        TempMemory
+    )
+
+    print("Created protocol :", protocol.name)
+
     return protocol, [None], [None], [None]
 
 
 def ep_rule_condition_request(kept_memory: MemoryInfo, memory_manager: MemoryManager, args: Arguments) -> list[MemoryInfo]:
-    """Condition function used by BBPSSW protocol on nodes except the initiator (see `ep_rule_action_request`).
+    '''    Condition function used by BBPSSW protocol on nodes except the initiator (see `ep_rule_action_request`).
 
     Args:
         kept_memory: the memory info to be checked
@@ -210,8 +301,8 @@ def ep_rule_condition_request(kept_memory: MemoryInfo, memory_manager: MemoryMan
 
     Returns:
         list[MemoryInfo]: a list of two memory infos (kept_memory and measured_memory) that satisfy the condition
-            for purification.
-    """
+            for purification.'''
+    
     memory_indices = args["memory_indices"]
     reservation = args["reservation"]
     purification_mode = args["purification_mode"]
@@ -231,14 +322,12 @@ def ep_rule_condition_request(kept_memory: MemoryInfo, memory_manager: MemoryMan
                     assert kept_memory.remote_memo != measured_memory.remote_memo
                     return [kept_memory, measured_memory]
 
-    elif purification_mode == "once":
-        # the first memory is the kept memory during purification
-        if (kept_memory.index in memory_indices
-                and kept_memory.state == "ENTANGLED"
-                and kept_memory.fidelity < reservation.fidelity):
+        elif purification_mode == "once":
             for measured_memory in memory_manager:
-                # the second memory is the measured memory during purification
-                if (measured_memory != kept_memory
+                if (kept_memory.index in memory_indices
+                        and kept_memory.state == "ENTANGLED"
+                        and kept_memory.fidelity < reservation.fidelity
+                        and measured_memory != kept_memory
                         and measured_memory.index in memory_indices
                         and measured_memory.state == "ENTANGLED"
                         and measured_memory.remote_node == kept_memory.remote_node
@@ -246,7 +335,7 @@ def ep_rule_condition_request(kept_memory: MemoryInfo, memory_manager: MemoryMan
                     assert kept_memory.remote_memo != measured_memory.remote_memo
                     return [kept_memory, measured_memory]
 
-    return []
+        return []
 
 
 def ep_rule_condition_await(memory_info: MemoryInfo, _manager: MemoryManager, args: Arguments) -> list[MemoryInfo]:

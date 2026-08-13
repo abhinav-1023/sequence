@@ -158,6 +158,11 @@ class Rule:
         """
 
         protocol, req_dsts, req_condition_funcs, req_args = self.action(memories_info, self.action_args)
+        print("\n===== RULE DO =====")
+        print("Protocol :", protocol.name)
+        print("Req Dsts :", req_dsts)
+        print("Req Func :", req_condition_funcs)
+        print("Req Args :", req_args)
         log.logger.info(f'{self.rule_manager} rule generates protocol {protocol.name}')
 
         protocol.rule = self  # the protocol is connected to the reservation via the rule
@@ -166,7 +171,10 @@ class Rule:
             info.memory.detach(info.memory.memory_array)
             info.memory.attach(protocol)
         for dst, req_func, args in zip(req_dsts, req_condition_funcs, req_args):
+            print("Calling send_request()")
+            print("Destination =", dst)
             self.rule_manager.send_request(protocol, dst, req_func, args)
+            
 
     def is_valid(self, memory_info: "MemoryInfo") -> list["MemoryInfo"]:
         """Method to check for memories meeting condition.

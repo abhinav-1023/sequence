@@ -208,13 +208,14 @@ class TeleportProtocol(Protocol):
 
         Args:
             msg (TeleportMessage): The message containing the correction bits.
+        
         """
-        print("ENTER bob_handle_correction on", self.owner.name)
-        print("\n===== bob_handle_correction =====")
-        print("Owner:", self.owner.name)
-        print("Remote:", self.remote_node_name)
-        print("Memory:", self.bob_comm_memory_name)
-        print("x =", msg.x_flip, "z =", msg.z_flip)
+        info = self.owner.resource_manager.memory_manager.get_info_by_memory(
+    self.bob_comm_memory
+)
+
+     
+       
         log.logger.debug(f"{self.name}: bob_handle_correction, memory={msg.bob_comm_memory_name}, x_flip={msg.x_flip}, z_flip={msg.z_flip}")
         bob_comm_memory_key = self.bob_comm_memory.qstate_key
         

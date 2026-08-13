@@ -6,7 +6,7 @@ from ..network_management.routing import DistributedRoutingProtocol, StaticRouti
 from .topology import Topology as Topo
 from ..kernel.timeline import Timeline
 from ..constants import KET_VECTOR_FORMALISM, SPEED_OF_LIGHT
-from .node import BSMNode, QuantumRouter
+from .node import BSMNode, QuantumRouter,DQCNode
 
 
 class RouterNetTopo(Topo):
@@ -91,7 +91,7 @@ class RouterNetTopo(Topo):
                 node_obj = BSMNode(name, self.tl, others, component_templates=template)
             elif node_type == self.QUANTUM_ROUTER:
                 memo_size = node.get(self.MEMO_ARRAY_SIZE, 0)
-                node_obj = QuantumRouter(name, self.tl, memo_size, component_templates=template)
+                node_obj = DQCNode(name, self.tl, memo_size, component_templates=template,data_memo_size=1)
             else:
                 raise ValueError(f"Unknown type of node '{node_type}'")
 

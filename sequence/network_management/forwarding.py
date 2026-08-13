@@ -70,45 +70,70 @@ class ForwardingProtocol(StackProtocol):
     def push(self, dst: str, msg: Message, next_hop: str | None = None):
         """Method to receive a message from upper protocols.
 
-        Routing packages the message and forwards it to the next node in the optimal path (determined by the forwarding table).
-
-        Args:
-            dst (str): name of destination node. If not None, resort to the forwarding table to get the next hop.
-            msg (Message): message to relay.
-            next_hop (str): name of next hop. If dst is None, next_hop shouldn't be None. next_hop directly tells the next hop.
-
-        Side Effects:
-            Will invoke `push` method of lower protocol or network manager.
+        Routing packages the message and forwards it to the next node
+        based on the topology.
         """
-        print("\n===== FORWARDING PUSH =====")
-        print("Owner      :", self.owner.name)
-        print("Destination:", dst)
-        print("Next hop   :", next_hop)
+
+       
+
         forwarding_table = self.forwarding_table
         print("Table      :", forwarding_table)
         print("Message    :", msg)
+
         assert dst != self.owner.name
-        forwarding_table = self.forwarding_table
-        new_msg = ForwardingMessage(ForwardingMessageType.OUTBOUND, self.name, msg)
-        print(f"[FORWARD] {self.owner.name} --> {next_hop} (dst={dst})")
-        if dst:  
-                                               # if dst is not None, use the forwarding table
-            next_hop: str | None = forwarding_table.get(dst, None)
-            print("\n===== XY ROUTING =====")
-            print("Current Node :", self.owner.name)
-            print("Final Destination :", dst)
-            print("Forwarding Table :", forwarding_table)
-            print("Next Hop Selected :", next_hop)
-            print("======================")
+
+        new_msg = ForwardingMessage(
+            ForwardingMessageType.OUTBOUND,
+            self.name,
+            msg
+        )
+
+        # If destination is provided, calculate the next hop
+        # using the routing protocol.
+        if dst:
+
+            routing_protocol = self.owner.network_manager.get_routing_protocol()
+
+            next_hop = routing_protocol.next_hop(dst)
+
+            print("\n===== TOPOLOGY ROUTING =====")
+            print("Routing Protocol :", type(routing_protocol).__name__)
+            print("Current Node     :", self.owner.name)
+            print("Destination      :", dst)
+            print("Next Hop         :", next_hop)
+            print("============================")
+
             if next_hop:
-                print(f"Forwarding {self.owner.name} -> {next_hop}")
-                self._push(dst=next_hop, msg=new_msg)
+                print(
+                    f"Forwarding {self.owner.name} -> {next_hop}"
+                )
+
+                self._push(
+                    dst=next_hop,
+                    msg=new_msg
+                )
+
             else:
-                log.logger.error(f'No forwarding rule for dst {dst} at node {self.owner.name}')
-        elif next_hop:                              # if next_hop is not None, use next_hop
-            self._push(dst=next_hop, msg=new_msg)  
+                log.logger.error(
+                    f"No path from {self.owner.name} to {dst}"
+                )
+
+        # If next_hop was directly provided
+        elif next_hop:
+
+            print(
+                f"Forwarding {self.owner.name} -> {next_hop}"
+            )
+
+            self._push(
+                dst=next_hop,
+                msg=new_msg
+            )
+
         else:
-            raise Exception('Both dst and next_hop are None!')
+            raise Exception(
+                "Both dst and next_hop are None!"
+            )
 
     def pop(self, src: str, msg: ForwardingMessage):
         """Message to receive reservation messages.
@@ -134,20 +159,17 @@ class ForwardingProtocol(StackProtocol):
 
         # self._pop(src=src, msg=msg.payload)
             
-        print("\n===== FORWARDING POP =====")
-        print("Owner :", self.owner.name)
-        print("From  :", src)
-        print("Payload :", msg.payload)
-        if self.owner.name != msg.payload.destination:
+        # its for only classical 
+        # if self.owner.name != msg.payload.destination:
 
-            print(f"\n[{self.owner.name}] Not final destination")
+        #     print(f"\n[{self.owner.name}] Not final destination")
 
-            self.push(
-                dst=msg.payload.destination,
-                msg=msg.payload
-            )
+        #     self.push(
+        #         dst=msg.payload.destination,
+        #         msg=msg.payload
+        #     )
 
-            return
+        #     return
         
         print(f"\n[{self.owner.name}] Final destination")
 

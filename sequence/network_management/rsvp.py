@@ -141,6 +141,15 @@ class RSVPProtocol(StackProtocol):
         """
 
         if msg.msg_type == RSVPMsgType.REQUEST:
+            print("\n===== RSVP REQUEST TIMING CHECK =====")
+            print("Node          :", self.owner.name)
+            print("Current time  :", self.owner.timeline.now())
+            print("Start time    :", msg.reservation.start_time)
+            print("End time      :", msg.reservation.end_time)
+            print("Initiator     :", msg.reservation.initiator)
+            print("Responder     :", msg.reservation.responder)
+            print("Path          :", msg.reservation.path)
+            print("=====================================")
             assert self.owner.timeline.now() < msg.reservation.start_time
             qcap = QCap(self.owner.name)
             msg.qcaps.append(qcap)

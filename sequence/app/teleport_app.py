@@ -72,17 +72,24 @@ class TeleportApp(RequestApp):
         Args:
             info (MemoryInfo): Information about the memory state change.
         """
-        print(">>>> ENTER RelayTeleportApp.get_memory <<<<")
+        
+
+        
+
         print(info)
         log.logger.debug(f"{self.name}: get_memory, name={info.memory.name}, state={info.state}")
         # once we see our entangled half, hand it to the protocol
+       
         if info.index in self.memo_to_reservation:
             if info.state == "ENTANGLED":
+                print(">>> ENTANGLED ENTERED:", self.node.name, info.memory.name)
                 for teleport_protocol in self.teleport_protocols:
                     this_node = info.memory.owner.name
                     remote_node = info.remote_node
                     if this_node == teleport_protocol.owner.name and remote_node == teleport_protocol.remote_node_name:
+                        print(">>> ALICE PROTOCOL MATCHED")
                         # this node is Alice
+
                         teleport_protocol.set_alice_comm_memory_name(info.memory.name)
                         teleport_protocol.set_alice_comm_memory(info.memory)
                         teleport_protocol.set_bob_comm_memory_name(info.remote_memo)
@@ -95,12 +102,19 @@ class TeleportApp(RequestApp):
                         self.node.timeline.schedule(event)
                         break # if no matching protocol found, go to else clause
                 else:
+                    
+                    print(">>> BOB SIDE: CREATING TELEPORT PROTOCOL")
                     # this node is Bob, create the new teleport protocol instance, then append to self.teleport_protocols
                     teleport_protocol = TeleportProtocol(self.node, alice=False, remote_node_name=info.remote_node)
                     teleport_protocol.set_bob_comm_memory_name(info.memory.name)
                     teleport_protocol.set_bob_comm_memory(info.memory)
                     teleport_protocol.set_alice_comm_memory_name(info.remote_memo)
                     self.teleport_protocols.append(teleport_protocol)
+                    print("===== BOB TELEPORT PROTOCOL CREATED =====")
+                    print("Protocol :", teleport_protocol.name)
+                    print("Bob memory :", teleport_protocol.bob_comm_memory_name)
+                    print("Alice memory :", teleport_protocol.alice_comm_memory_name)
+                    print("Protocols now :", self.teleport_protocols)
 
     def received_message(self, src: str, msg: TeleportMessage):
         """Handle incoming teleport messages.
@@ -115,7 +129,7 @@ class TeleportApp(RequestApp):
                 if src == teleport_protocol.remote_node_name and msg.bob_comm_memory_name == teleport_protocol.bob_comm_memory_name:
                     teleport_protocol.received_message(src, msg)
                     self.node.resource_manager.expire_rules_by_reservation(msg.reservation)                    # early release of resources
-                    self.node.resource_manager.update(None, teleport_protocol.bob_comm_memory, MemoryInfo.RAW) # release the bob comm memory
+                    # self.node.resource_manager.update(None, teleport_protocol.bob_comm_memory, MemoryInfo.RAW) # release the bob comm memory
                     teleport_protocol.bob_acknowledge_complete(msg.reservation)
                     self.teleport_protocols.remove(teleport_protocol)  # remove the protocol instance, it's lifecycle is complete
                     break
@@ -131,14 +145,9 @@ class TeleportApp(RequestApp):
                     break
             else:
                 log.logger.warning(f"{self.name}: received_message: no matching teleport protocol for msg={msg} from {src}")
-
     def teleport_complete(self, comm_key: int):
-        """Called by TeleportProtocol once Bob's qubit is corrected. comm_key holds the teleported |ψ⟩.
-
-        Args:
-            comm_key (int): The key of the comm memory where the teleported state is stored.
-        """
         my_qubit = self.node.timeline.quantum_manager.get(comm_key)
-        psi = my_qubit.state # get qubit state
+        psi = my_qubit.state
+
         log.logger.info(f"{self.name}: teleport done, state={psi}")
-        self.results.append((self.node.timeline.now(), psi)) # append result (timestamp, state)
+        self.results.append((self.node.timeline.now(), psi))

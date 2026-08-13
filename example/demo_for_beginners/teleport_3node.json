@@ -1,146 +1,59 @@
 {
-    "templates": {
-        "teleportation": {
-            "MemoryArray": {
-                "fidelity": 1,
-                "efficiency": 0.7
-            }
-        }
+  "nodes": [
+    {
+      "name": "alice",
+      "type": "QuantumRouter",
+      "seed": 0,
+      "memo_size": 50
     },
+    {
+      "name": "relay",
+      "type": "QuantumRouter",
+      "seed": 2,
+      "memo_size": 50
+    },
+    {
+      "name": "bob",
+      "type": "QuantumRouter",
+      "seed": 1,
+      "memo_size": 50
+    }
+  ],
 
-    "nodes": [
-        {
-            "name": "alice",
-            "type": "DQCNode",
-            "seed": 0,
-            "memo_size": 1,
-            "data_memo_size": 1,
-            "group": 0,
-            "template": "teleportation"
-        },
-        {
-            "name": "relay",
-            "type": "DQCNode",
-            "seed": 2,
-            "memo_size": 2,
-            "data_memo_size": 1,
-            "group": 0,
-            "template": "teleportation"
-        },
-        {
-            "name": "bob",
-            "type": "DQCNode",
-            "seed": 1,
-            "memo_size": 1,
-            "data_memo_size": 1,
-            "group": 0,
-            "template": "teleportation"
-        },
-        {
-            "name": "BSM_alice_relay",
-            "type": "BSMNode",
-            "seed": 0,
-            "group": 0,
-            "template": "teleportation"
-        },
-        {
-            "name": "BSM_relay_bob",
-            "type": "BSMNode",
-            "seed": 1,
-            "group": 0,
-            "template": "teleportation"
-        }
-    ],
+  "qconnections": [
+    {
+      "node1": "alice",
+      "node2": "relay",
+      "attenuation": 0.0002,
+      "distance": 500,
+      "type": "meet_in_the_middle"
+    },
+    {
+      "node1": "relay",
+      "node2": "bob",
+      "attenuation": 0.0002,
+      "distance": 500,
+      "type": "meet_in_the_middle"
+    }
+  ],
 
-    "qchannels": [
-        {
-            "source": "alice",
-            "destination": "BSM_alice_relay",
-            "distance": 5000,
-            "attenuation": 0.0002
-        },
-        {
-            "source": "relay",
-            "destination": "BSM_alice_relay",
-            "distance": 5000,
-            "attenuation": 0.0002
-        },
-        {
-            "source": "relay",
-            "destination": "BSM_relay_bob",
-            "distance": 5000,
-            "attenuation": 0.0002
-        },
-        {
-            "source": "bob",
-            "destination": "BSM_relay_bob",
-            "distance": 5000,
-            "attenuation": 0.0002
-        }
-    ],
+  "cconnections": [
+    {
+      "node1": "alice",
+      "node2": "relay",
+      "delay": 500000000
+    },
+    {
+      "node1": "relay",
+      "node2": "bob",
+      "delay": 500000000
+    },
+    {
+      "node1": "alice",
+      "node2": "bob",
+      "delay": 1000000000
+    }
+  ],
 
-    "cchannels": [
-        {
-            "source": "alice",
-            "destination": "BSM_alice_relay",
-            "delay": 500000000
-        },
-        {
-            "source": "relay",
-            "destination": "BSM_alice_relay",
-            "delay": 500000000
-        },
-        {
-            "source": "BSM_alice_relay",
-            "destination": "alice",
-            "delay": 500000000
-        },
-        {
-            "source": "BSM_alice_relay",
-            "destination": "relay",
-            "delay": 500000000
-        },
-        {
-            "source": "relay",
-            "destination": "BSM_relay_bob",
-            "delay": 500000000
-        },
-        {
-            "source": "bob",
-            "destination": "BSM_relay_bob",
-            "delay": 500000000
-        },
-        {
-            "source": "BSM_relay_bob",
-            "destination": "relay",
-            "delay": 500000000
-        },
-        {
-            "source": "BSM_relay_bob",
-            "destination": "bob",
-            "delay": 500000000
-        },
-        {
-            "source": "alice",
-            "destination": "relay",
-            "delay": 500000000
-        },
-        {
-            "source": "relay",
-            "destination": "alice",
-            "delay": 500000000
-        },
-        {
-            "source": "relay",
-            "destination": "bob",
-            "delay": 500000000
-        },
-        {
-            "source": "bob",
-            "destination": "relay",
-            "delay": 500000000
-        }
-    ],
-
-    "stop_time": 10000000000000
+  "stop_time": 2000000000000
 }
