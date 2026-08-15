@@ -171,3 +171,89 @@ class XYRoutingProtocol(RoutingProtocol):
             return node.name
 
         return None
+    def test_route(self, destination):
+        print("\n========== ROUTING TEST ==========")
+        print("Source      :", self.owner.name)
+        print("Destination :", destination)
+
+        current = self.owner.name
+        visited = set()
+
+        while current != destination:
+
+            if current in visited:
+                print("ERROR: Routing loop detected!")
+                return
+
+            visited.add(current)
+
+            node = self.get_node(current)
+
+            if node is None:
+                print("ERROR: Node not found:", current)
+                return
+
+            # Create routing calculation from current node
+            old_owner = self.owner
+            self.owner = node
+
+            next_node = self.next_hop(destination)
+
+            self.owner = old_owner
+
+            if next_node is None:
+                print("ERROR: No next hop from", current)
+                return
+
+            print(f"{current} -> {next_node}")
+
+            current = next_node
+
+        print(f"{current}: DESTINATION REACHED")
+        print("=================================\n")
+
+    def get_route(self, destination):
+        """Return the complete route from current node to destination."""
+
+        source = self.owner.name
+
+        if source == destination:
+            return [source]
+
+        queue = deque([source])
+        previous = {source: None}
+
+        while queue:
+
+            current = queue.popleft()
+            current_node = self.get_node(current)
+
+            if current_node is None:
+                continue
+
+            for neighbor in self.get_neighbors(current_node):
+
+                if neighbor in previous:
+                    continue
+
+                previous[neighbor] = current
+
+                if neighbor == destination:
+                    queue.clear()
+                    break
+
+                queue.append(neighbor)
+
+        if destination not in previous:
+            return None
+
+        path = []
+        current = destination
+
+        while current is not None:
+            path.append(current)
+            current = previous[current]
+
+        path.reverse()
+
+        return path

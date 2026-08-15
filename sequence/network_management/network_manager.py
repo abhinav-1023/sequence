@@ -149,8 +149,7 @@ class DistributedNetworkManager(NetworkManager):
         # routing_type = component_templates.get('routing', ROUTING_STATIC)
         routing_type = ROUTING_XY
         self.routing_protocol = RoutingProtocol.create(owner, name=routing_type, protocol_type=routing_type)
-        print("Routing Type : ", routing_type)
-        print("Routing Protocol : ", type(self.routing_protocol).__name__)
+        
         # Create and load the stack to protocol_stack
         protocols: list = self.create_stack()
         self.load_stack(protocols)

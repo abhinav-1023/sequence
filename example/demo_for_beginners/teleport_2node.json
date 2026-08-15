@@ -15,7 +15,8 @@
             "memo_size": 1,
             "data_memo_size": 1,
             "group": 0,
-            "template": "teleportation"
+            ": "teleportation"
+
         },
         {
             "name": "bob",
