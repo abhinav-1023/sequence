@@ -136,42 +136,36 @@ class ForwardingProtocol(StackProtocol):
             )
 
     def pop(self, src: str, msg: ForwardingMessage):
-        """Message to receive reservation messages.
 
-        Messages are forwarded to the upper protocol.
+        print("\n===== FORWARDING POP =====")
+        print("Current node :", self.owner.name)
+        print("From         :", src)
 
-        Args:
-            src (str): node sending the message.
-            msg (ForwardingMessage): message received.
+        destination = msg.payload.reservation.responder
 
-        Side Effects:
-            Will
-              call `pop` method of higher protocol.
-        # """
-        # print("\n===== FORWARDING POP =====")
-        # print("Owner :", self.owner.name)
-        # print("From  :", src)
-        # print("Payload :", msg.payload)
-        # if self.owner.name == "relay":
-        #     print("Relay forwarding using ForwardingProtocol")
-        #     self.push(dst="bob", msg=msg.payload)
-        #     return
+        print("Destination  :", destination)
 
-        # self._pop(src=src, msg=msg.payload)
-            
-        # its for only classical 
-        # if self.owner.name != msg.payload.destination:
+        # FINAL DESTINATION
+        if self.owner.name == destination:
 
-        #     print(f"\n[{self.owner.name}] Not final destination")
+            print(
+                f"===== FINAL DESTINATION: {self.owner.name} ====="
+            )
 
-        #     self.push(
-        #         dst=msg.payload.destination,
-        #         msg=msg.payload
-        #     )
+            self._pop(
+                src=src,
+                msg=msg.payload
+            )
 
-        #     return
-        
-        print(f"\n[{self.owner.name}] Final destination")
+            return
 
-        self._pop(src=src, msg=msg.payload)
-        print("Receiver =", msg.payload.receiver)
+        # RELAY NODE
+        print(
+            f"===== RELAY NODE: {self.owner.name} ====="
+        )
+
+        # Let RSVP process this request first.
+        self._pop(
+            src=src,
+            msg=msg.payload
+        )

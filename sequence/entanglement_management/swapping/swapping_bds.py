@@ -127,8 +127,15 @@ class EntanglementSwappingA_BDS(EntanglementSwappingA):
         self.owner.send_message(self.left_node, msg_l)
         self.owner.send_message(self.right_node, msg_r)
 
-        self.update_resource_manager(self.left_memo, MemoryInfo.RAW)
-        self.update_resource_manager(self.right_memo, MemoryInfo.RAW)
+        self.update_resource_manager_no_rules(
+            self.left_memo,
+            MemoryInfo.RAW
+        )
+
+        self.update_resource_manager_no_rules(
+            self.right_memo,
+            MemoryInfo.RAW
+        )
 
     def swapping_res(self) -> list[float]:
         """Method to calculate the resulting entangled state conditioned on successful swapping, for BDS formalism.

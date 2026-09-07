@@ -148,6 +148,7 @@ class ResourceManager:
         self.pending_protocols = [] # Protocols that are requesting remote resource
         self.waiting_protocols = [] # Protocols that are waiting request from remote resource
         self.memory_to_protocol_map = {}
+        self.pending_requests = []
 
     def init(self):
         pass
@@ -166,6 +167,12 @@ class ResourceManager:
         for card in timecards:
             if reservation in card.reservations:
                 memory_indices.append(card.memory_index)
+        print("\n===== RULE DEBUG =====")
+        print("Node:", self.owner.name)
+        print("Path:", path)
+        print("Index:", path.index(self.owner.name))
+        print("Memory indices:", memory_indices)
+        print("======================")
         log.logger.debug(f'Memory indices for reservation {reservation.identity} on node {self.owner.name}: {memory_indices}')
 
         index: int = path.index(self.owner.name)
@@ -191,25 +198,25 @@ class ResourceManager:
             rules.append(rule)
 
         # 2. create rules for entanglement purification
-        if index > 0:
-            condition_args = {"memory_indices": memory_indices[:reservation.memory_size], "reservation": reservation,
-                              "purification_mode": reservation.purification_mode}
-            action_args = {}
-            rule = Rule(10, ep_rule_action_request, ep_rule_condition_request, action_args, condition_args)
-            rules.append(rule)
+        # if index > 0:
+        #     condition_args = {"memory_indices": memory_indices[:reservation.memory_size], "reservation": reservation,
+        #                       "purification_mode": reservation.purification_mode}
+        #     action_args = {}
+        #     rule = Rule(10, ep_rule_action_request, ep_rule_condition_request, action_args, condition_args)
+        #     rules.append(rule)
 
-        if index < len(path) - 1:
-            if index == 0:
-                condition_args = {"memory_indices": memory_indices, "fidelity": reservation.fidelity,
-                                  "purification_mode": reservation.purification_mode}
-            else:
-                condition_args = {"memory_indices": memory_indices[reservation.memory_size:],
-                                  "fidelity": reservation.fidelity,
-                                  "purification_mode": reservation.purification_mode}
+        # if index < len(path) - 1:
+        #     if index == 0:
+        #         condition_args = {"memory_indices": memory_indices, "fidelity": reservation.fidelity,
+        #                           "purification_mode": reservation.purification_mode}
+        #     else:
+        #         condition_args = {"memory_indices": memory_indices[reservation.memory_size:],
+        #                           "fidelity": reservation.fidelity,
+        #                           "purification_mode": reservation.purification_mode}
 
-            action_args = {}
-            rule = Rule(10, ep_rule_action_await, ep_rule_condition_await, action_args, condition_args)
-            rules.append(rule)
+        #     action_args = {}
+        #     rule = Rule(10, ep_rule_action_await, ep_rule_condition_await, action_args, condition_args)
+        #     rules.append(rule)
 
         # 3. create rules for entanglement swapping
         if index == 0:
@@ -325,7 +332,13 @@ class ResourceManager:
             for memory in protocol.memories:
                 self.update(protocol, memory, MemoryInfo.RAW)
 
-    def update(self, protocol: EntanglementProtocol | None, memory: Memory, state: str) -> None:
+    def update(
+        self,
+        protocol: EntanglementProtocol | None,
+        memory: Memory,
+        state: str,
+        trigger_rules: bool = True
+    ) -> None:
         """Method to update state of memory after completion of entanglement management protocol.
 
         Args:
@@ -337,6 +350,7 @@ class ResourceManager:
         Side Effects:
             May modify memory state, and modify any attached protocols.
         """
+       
 
         self.memory_manager.update(memory, state)
         if protocol:
@@ -356,18 +370,22 @@ class ResourceManager:
 
         # iterate all the rules and check if there is a valid rule
         memo_info = self.memory_manager.get_info_by_memory(memory)
-        for rule in self.rule_manager:
-            memories_info = rule.is_valid(memo_info)
-            if len(memories_info) > 0:
-                print("\n******** RULE DO FROM UPDATE ********")
-                print("Node   :", self.owner.name)
-                print("Memory :", [info.memory.name for info in memories_info])
-                print("Rule   :", rule)
-                print("**************************************")
-                rule.do(memories_info)
-                for info in memories_info:
-                    info.to_occupied()
-                return
+        if not trigger_rules:
+            self.owner.get_idle_memory(memo_info)
+            return
+        if trigger_rules:
+            for rule in self.rule_manager:
+                memories_info = rule.is_valid(memo_info)
+                if len(memories_info) > 0:
+                    print("\n******** RULE DO FROM UPDATE ********")
+                    print("Node   :", self.owner.name)
+                    print("Memory :", [info.memory.name for info in memories_info])
+                    print("Rule   :", rule)
+                    print("**************************************")
+                    rule.do(memories_info)
+                    for info in memories_info:
+                        info.to_occupied()
+                    return
 
         self.owner.get_idle_memory(memo_info)  # no new rules apply to this memory, thus "idle"
 
@@ -402,14 +420,82 @@ class ResourceManager:
             print("Added protocol :", protocol.name)
             print("Waiting count :", len(self.waiting_protocols))
             print("Protocols :", [p.name for p in self.waiting_protocols])
+            self._retry_pending_requests()
+
             return
         if protocol not in self.pending_protocols:
             self.pending_protocols.append(protocol)
         memo_names = [memo.name for memo in protocol.memories]
-        msg = ResourceManagerMessage(ResourceManagerMsgType.REQUEST, protocol=protocol.name, node=self.owner.name,
-                                     memories=memo_names, req_condition_func=req_condition_func, req_args=req_args)
-        self.owner.send_message(req_dst, msg)
+        msg = ResourceManagerMessage(
+            ResourceManagerMsgType.REQUEST,
+            protocol=protocol.name,
+            node=self.owner.name,
+            memories=memo_names,
+            req_condition_func=req_condition_func,
+            req_args=req_args
+        )
+
+        routing_protocol = self.owner.network_manager.get_routing_protocol()
+        next_hop = routing_protocol.next_hop(req_dst)
+
+        print("RM ROUTING:", self.owner.name, "->", req_dst, "via", next_hop)
+
+        self.owner.send_message(next_hop, msg)
         log.logger.debug(f"{self.owner.name} send {msg.msg_type.name} message to {req_dst}")
+    def _retry_pending_requests(self):
+        if not self.pending_requests:
+            return
+
+        remaining = []
+
+        for src, msg in self.pending_requests:
+
+            print("\n===== RETRY PENDING EG REQUEST =====")
+            print("Node :", self.owner.name)
+            print("Request from :", src)
+
+            protocol = msg.req_condition_func(
+                self.waiting_protocols,
+                msg.req_args
+            )
+
+            if protocol is None:
+                remaining.append((src, msg))
+                continue
+
+            print("\n===== PENDING EG MATCH FOUND =====")
+            print("Node     :", self.owner.name)
+            print("Protocol :", protocol.name)
+            print("===================================")
+
+            protocol.set_others(
+                msg.ini_protocol_name,
+                msg.ini_node_name,
+                msg.ini_memories_name
+            )
+
+            memo_names = [
+                memo.name for memo in protocol.memories
+            ]
+
+            new_msg = ResourceManagerMessage(
+                ResourceManagerMsgType.RESPONSE,
+                protocol=msg.ini_protocol_name,
+                node=msg.ini_node_name,
+                memories=msg.ini_memories_name,
+                is_approved=True,
+                paired_protocol=protocol.name,
+                paired_node=self.owner.name,
+                paired_memories=memo_names
+            )
+
+            self.owner.send_message(src, new_msg)
+
+            self.waiting_protocols.remove(protocol)
+            self.owner.protocols.append(protocol)
+            protocol.start()
+
+        self.pending_requests = remaining
     def received_message(self, src: str, msg: ResourceManagerMessage) -> None:
         """Method to receive resource manager messages.
 
@@ -503,6 +589,13 @@ class ResourceManager:
 
                     self.owner.send_message(src, new_msg)
 
+                    print("\n===== REMOVING WAITING PROTOCOL =====")
+                    print("Node       :", self.owner.name)
+                    print("Removing   :", protocol.name)
+                    print("Remote     :", getattr(protocol, "remote_node_name", None))
+                    print("Remaining  :", [p.name for p in self.waiting_protocols])
+                    print("====================================")
+
                     self.waiting_protocols.remove(protocol)
 
                     self.owner.protocols.append(protocol)
@@ -513,25 +606,13 @@ class ResourceManager:
                 # NO MATCH
                 # --------------------------------------------------------
                 else:
-
-                    print("\n===== EG MATCH FAILED =====")
+                    print("\n===== EG MATCH DEFERRED =====")
                     print("Node :", self.owner.name)
-                    print("No matching protocol")
-                    print("===========================")
+                    print("Request from :", src)
+                    print("Waiting protocol not created yet")
+                    print("==============================")
 
-                    new_msg = ResourceManagerMessage(
-                        ResourceManagerMsgType.RESPONSE,
-                        protocol=msg.ini_protocol_name,
-                        node=msg.ini_node_name,
-                        memories=msg.ini_memories_name,
-                        is_approved=False,
-                        paired_protocol=None,
-                        paired_node=None,
-                        paired_memories=None
-                    )
-
-                    self.owner.send_message(src, new_msg)
-
+                    self.pending_requests.append((src, msg))
             # ============================================================
             # RESPONSE
             # ============================================================

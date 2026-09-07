@@ -61,7 +61,7 @@ class RelayTeleportApp(RequestApp):
             data_memory_index (int): Index of the data qubit to be teleported.
         """
         
-        log.logger.debug(f"{self.name}: start() → responder={responder}, data_memory_index={data_memory_index}")
+        log.logger.debug(f"{self.name}: start() -> responder={responder}, data_memory_index={data_memory_index}")
        
         # reserve and generate EPR pair
         super().start(responder, start_t, end_t, memory_size, fidelity)
@@ -90,7 +90,7 @@ class RelayTeleportApp(RequestApp):
             result (bool): True if the reservation was successful, False otherwise.
         """
         super().get_reservation_result(reservation, result)
-        log.logger.debug(f"{self.name}: reservation_result → {result}")
+        log.logger.debug(f"{self.name}: reservation_result -> {result}")
 
     def get_memory(self, info: MemoryInfo):
         """Handle memory state changes.
@@ -124,6 +124,30 @@ class RelayTeleportApp(RequestApp):
             info.index in self.memo_to_reservation
         )
         if info.index in self.memo_to_reservation and info.state == "ENTANGLED":
+                reservation = self.memo_to_reservation[info.index]
+                path = reservation.path
+
+                if self.node.name not in path:
+                    return
+
+                path_index = path.index(self.node.name)
+
+                is_source = path_index == 0
+                is_destination = path_index == len(path) - 1
+                is_relay = not is_source and not is_destination
+
+                print("\n===== TELEPORT ROLE =====")
+                print("Node :", self.node.name)
+                print("Path :", path)
+                print("Index:", path_index)
+
+                if is_source:
+                    print("Role : SOURCE")
+                elif is_destination:
+                    print("Role : DESTINATION")
+                else:
+                    print("Role : RELAY")
+                print("=========================")
                 for teleport_protocol in self.teleport_protocols:
                     print("Current protocols:")
                     for p in self.teleport_protocols:
@@ -207,35 +231,88 @@ class RelayTeleportApp(RequestApp):
 
 
     def received_message(self, src: str, msg: TeleportMessage):
-        """Handle incoming teleport messages.
+        print("\n===== TELEPORT APP RECEIVED =====")
+        print("Node       :", self.node.name)
+        print("Source     :", src)
+        print("Msg type   :", msg.msg_type)
+        print("Bob memory :", msg.bob_comm_memory_name)
+        print("Reservation:", msg.reservation)
 
-        Args:
-            src (str): Source node name.
-            msg (TeleportMessage): The teleport message received.
-        """
-        log.logger.debug(f"{self.name} received_message from {src}: {msg}")
-        if msg.msg_type is TeleportMsgType.MEASUREMENT_RESULT:  # Bob receives measurement result from Alice
-            for teleport_protocol in self.teleport_protocols:   # find the correct teleport protocol on Bob's side
-                if src == teleport_protocol.remote_node_name and msg.bob_comm_memory_name == teleport_protocol.bob_comm_memory_name:
+        if msg.msg_type is TeleportMsgType.MEASUREMENT_RESULT:
+
+            print("Number of teleport protocols :", len(self.teleport_protocols))
+
+            for teleport_protocol in self.teleport_protocols:
+
+                print("\n--- CHECKING TELEPORT PROTOCOL ---")
+                print("Protocol name :", teleport_protocol.name)
+                print("Protocol remote:", teleport_protocol.remote_node_name)
+                print("Protocol Bob mem:", teleport_protocol.bob_comm_memory_name)
+                print("Message Bob mem:", msg.bob_comm_memory_name)
+
+                if (
+    msg.bob_comm_memory_name == teleport_protocol.bob_comm_memory_name
+    and msg.reservation is not None
+    and msg.reservation.identity == teleport_protocol.reservation.identity
+):
+
+                    print("\n===== TELEPORT PROTOCOL MATCH =====")
+                    print("Protocol :", teleport_protocol.name)
+                    print("===================================")
+
                     teleport_protocol.received_message(src, msg)
-                    self.node.resource_manager.expire_rules_by_reservation(msg.reservation)                    # early release of resources
-                    #self.node.resource_manager.update(None, teleport_protocol.bob_comm_memory, MemoryInfo.RAW) # release the bob comm memory
-                    teleport_protocol.bob_acknowledge_complete(msg.reservation)
-                    #self.teleport_protocols.remove(teleport_protocol)  # remove the protocol instance, it's lifecycle is complete
-                    break
-            else:
-                log.logger.warning(f"{self.name}: received_message: no matching teleport protocol for msg={msg} from {src}")
 
-        elif msg.msg_type is TeleportMsgType.ACK:              # Alice receives acknowledgment from Bob
-            for teleport_protocol in self.teleport_protocols:  # find the correct teleport protocol on Alice's side
-                if src == teleport_protocol.remote_node_name and msg.bob_comm_memory_name == teleport_protocol.bob_comm_memory_name:
-                    self.node.resource_manager.expire_rules_by_reservation(msg.reservation)                      # expire the rules
-                    self.node.resource_manager.update(None, teleport_protocol.alice_comm_memory, MemoryInfo.RAW) # release the alice comm memory
-                    self.teleport_protocols.remove(teleport_protocol)  # remove the protocol instance, it's lifecycle is complete
-                    break
-            else:
-                log.logger.warning(f"{self.name}: received_message: no matching teleport protocol for msg={msg} from {src}")
+                    print("===== TELEPORT PROTOCOL RETURNED =====")
 
+                    self.node.resource_manager.expire_rules_by_reservation(
+                        msg.reservation
+                    )
+
+                    teleport_protocol.bob_acknowledge_complete(
+                        msg.reservation
+                    )
+
+                    break
+
+            else:
+                print("\n===== NO TELEPORT PROTOCOL MATCH =====")
+                print("Received Bob memory :", msg.bob_comm_memory_name)
+                print(
+                    "Available protocols :",
+                    [
+                        (
+                            p.name,
+                            p.bob_comm_memory_name,
+                            p.remote_node_name
+                        )
+                        for p in self.teleport_protocols
+                    ]
+                )
+
+        elif msg.msg_type is TeleportMsgType.ACK:
+
+            print("===== ACK RECEIVED =====")
+
+            for teleport_protocol in self.teleport_protocols:
+
+                if (
+    msg.bob_comm_memory_name == teleport_protocol.bob_comm_memory_name
+    and msg.reservation is not None
+    and msg.reservation.identity == teleport_protocol.reservation.identity
+):
+
+                    self.node.resource_manager.expire_rules_by_reservation(
+                        msg.reservation
+                    )
+
+                    self.node.resource_manager.update(
+                        None,
+                        teleport_protocol.alice_comm_memory,
+                        MemoryInfo.RAW
+                    )
+
+                    self.teleport_protocols.remove(teleport_protocol)
+                    break
     def teleport_complete(self, comm_key: int):
         """Called by TeleportProtocol once Bob's qubit is corrected. comm_key holds the teleported |ψ⟩.
 

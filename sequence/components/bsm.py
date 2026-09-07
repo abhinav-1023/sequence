@@ -458,6 +458,8 @@ class SingleAtomBSM(BSM):
         """
 
         super().get(photon)
+        print(f"[BSM GET] {self.name} received photon")
+        print(f"[BSM GET] {self.name} photon count = {len(self.photons)}")
         log.logger.debug(self.name + " received photon")
 
         if len(self.photons) == 2:
@@ -526,10 +528,13 @@ class SingleAtomBSM(BSM):
 
         detector_num = self.detectors.index(detector)
         time = info["time"]
+        print(f"[BSM TRIGGER] {self.name} detector={detector_num} time={time}")
 
         res = detector_num
         info = {'entity': 'BSM', 'info_type': 'BSM_res', 'res': res, 'time': time}
+        print(f"[BSM RESULT] {self.name} -> {info}")
         self.notify(info)
+
 
 
 class AbsorptiveBSM(BSM):

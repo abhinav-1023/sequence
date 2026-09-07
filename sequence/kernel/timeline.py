@@ -128,12 +128,7 @@ class Timeline:
 
             self.time = event.time
             log.logger.debug(f"Event #{self.run_counter}: process owner={event.process.owner}, activation={event.process.activation}")
-            print(
-                "RUNNING:",
-                event.process.owner.__class__.__name__,
-                event.process.activation,
-                self.now()
-            )
+            
             event.process.run()
             self.run_counter += 1
 

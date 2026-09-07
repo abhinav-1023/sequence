@@ -98,7 +98,17 @@ class EntanglementSwappingA(EntanglementProtocol, ABC):
         self.is_success = False
         self.left_protocol_name = None
         self.right_protocol_name = None
-
+    def update_resource_manager_no_rules(
+        self,
+        memory: Memory,
+        state: str
+    ) -> None:
+        self.owner.resource_manager.update(
+            self,
+            memory,
+            state,
+            trigger_rules=False
+        )
     @classmethod
     def set_formalism(cls, formalism: str) -> None:
         """Set the global formalism for all Entanglement Swapping A protocol instances.

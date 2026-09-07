@@ -81,6 +81,14 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
             return True
 
         elif self.ent_round == 3 and self.bsm_res[1] != -1:
+            print("\n===== BK SUCCESS CHECK =====")
+            print("Node        :", self.owner.name)
+            print("Protocol    :", self.name)
+            print("Memory      :", self.memory.name)
+            print("Primary     :", self.primary)
+            print("BSM RES     :", self.bsm_res)
+            print("Remote      :", self.remote_node_name)
+            print("============================")
             # entanglement succeeded, correction
             if self.primary:
                 self.owner.timeline.quantum_manager.run_circuit(self._flip_circuit, [self._qstate_key])
@@ -91,24 +99,44 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
 
         else:
             # entanglement failed
+            print("\n===== BK FAILED =====")
+            print("Node     :", self.owner.name)
+            print("Protocol :", self.name)
+            print("Round    :", self.ent_round)
+            print("BSM RES  :", self.bsm_res)
+            print("====================")
             self._entanglement_fail()
             return False
 
     def emit_event(self) -> None:
-        """Method to set up memory and emit photons.
+        print("\n===== BARRETT-KOK EMIT =====")
+        print("Node       :", self.owner.name)
+        print("Protocol   :", self.name)
+        print("Memory     :", self.memory.name)
+        print("Middle BSM :", self.middle)
+        print("Ent round  :", self.ent_round)
+        print("Ready?     :", self.is_ready())
 
-        If the protocol is in round 1, the memory will be first set to the |+> state.
-        Otherwise, it will apply an x_gate to the memory.
-        Regardless of the round, the memory `excite` method will be invoked.
+        log.logger.debug(
+            f"{self.owner.name}: BK emit_event "
+            f"protocol={self.name}, memory={self.memory.name}, "
+            f"middle={self.middle}, round={self.ent_round}"
+        )
 
-        Side Effects:
-            May change state of attached memory.
-            May cause attached memory to emit photon.
-        """
+        if not self.is_ready():
+            print("!!! EMIT FAILED: protocol not ready !!!")
+            log.logger.info(f'{self} is not valid, emit_event() failed.')
+            return
 
         if self.ent_round == 1:
+            print("Setting memory to |+> state")
             self.memory.update_state(self._plus_state)
+
+        print("Calling memory.excite()")
+
         self.memory.excite(self.middle)
+
+        print("===== EMIT DONE =====\n")
 
     def received_message(self, src: str, msg: EntanglementGenerationMessage) -> None:
         """Method to receive messages.
@@ -123,6 +151,21 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
         Side Effects:
             May schedule various internal and hardware events.
         """
+        print(
+        f"[BK RECEIVED] node={self.owner.name}, "
+        f"memory={self.memory.name}, "
+        f"ent_round={self.ent_round}, "
+        f"remote={self.remote_node_name}, "
+        f"middle={self.middle}, "
+        f"msg={msg.msg_type}"
+    )
+        print("\n========== BK RECEIVED MESSAGE ==========")
+        print("Node     :", self.owner.name)
+        print("Protocol :", self.name)
+        print("Source   :", src)
+        print("Msg type :", msg.msg_type)
+        print("Round    :", self.ent_round)
+        print("========================================")
 
         if src not in [self.middle, self.remote_node_name]:
             return
@@ -143,6 +186,15 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
             min_time = max(self.owner.timeline.now(),
                            memory_excite_time) + other_qc_delay - self.qc_delay + cc_delay  # cc_delay time for NEGOTIATE_ACK
             emit_time = self.owner.schedule_qubit(self.middle, min_time)  # used to send memory
+            print("\n===== BK NEGOTIATE SCHEDULE =====")
+            print("Node          :", self.owner.name)
+            print("ent_round     :", self.ent_round)
+            print("now           :", self.owner.timeline.now())
+            print("memory_excite :", memory_excite_time)
+            print("min_time      :", min_time)
+            print("emit_time     :", emit_time)
+            print("qc_delay      :", self.qc_delay)
+            print("=================================")
             self.expected_time = emit_time + self.qc_delay  # expected time for middle BSM node to receive the photon
 
             # schedule emit
@@ -164,6 +216,13 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
             # TODO: base future start time on resolution
             future_start_time = self.expected_time + self.owner.cchannels[
                 self.middle].delay + 10  # delay is for sending the BSM_RES to end nodes, 10 is a small gap
+            print("\n===== BK FUTURE EVENT =====")
+            print("Node              :", self.owner.name)
+            print("ent_round         :", self.ent_round)
+            print("expected_time     :", self.expected_time)
+            print("future_start_time :", future_start_time)
+            print("timeline now      :", self.owner.timeline.now())
+            print("================================")
             if self.ent_round == 1:
                 process = Process(self, "start", [])  # for the second round
             else:
@@ -172,6 +231,11 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
             event = Event(future_start_time, process, priority)
             self.owner.timeline.schedule(event)
             self.scheduled_events.append(event)
+            print(">>> EVENT SCHEDULED")
+            print("Node :", self.owner.name)
+            print("Event time :", event.time)
+            print("Process :", event.process.activation)
+            print("==========================")
 
         elif msg_type is GenerationMsgType.NEGOTIATE_ACK:  # non-primary --> primary
             # configure params
@@ -182,6 +246,14 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
 
             # schedule emit
             emit_time = self.owner.schedule_qubit(self.middle, msg.emit_time)
+            print("\n===== BK NEGOTIATE_ACK SCHEDULE =====")
+            print("Node          :", self.owner.name)
+            print("ent_round     :", self.ent_round)
+            print("now           :", self.owner.timeline.now())
+            print("msg.emit_time :", msg.emit_time)
+            print("emit_time     :", emit_time)
+            print("expected_time :", self.expected_time)
+            print("=====================================")
             assert emit_time == msg.emit_time, f"Invalid eg emit times {emit_time} {msg.emit_time} {self.owner.timeline.now()}"
 
             process = Process(self, "emit_event", [])
@@ -193,6 +265,10 @@ class BarretKokA(EntanglementGenerationA, QuantumCircuitMixin):
             # else schedule update_memory (currently second round)
             # TODO: base future start time on resolution
             future_start_time = self.expected_time + self.owner.cchannels[self.middle].delay + 10
+            print(">>> NEGOTIATE_ACK FUTURE EVENT")
+            print("Node :", self.owner.name)
+            print("future_start_time :", future_start_time)
+            print("process :", process.activation)
             if self.ent_round == 1:
                 process = Process(self, "start", [])  # for the second round
             else:
@@ -268,6 +344,7 @@ class BarretKokB(EntanglementGenerationB):
         self.protocol_type = BARRET_KOK
 
     def bsm_update(self, bsm: "SingleAtomBSM", info: dict[str, Any]):
+        print(f"[BKB UPDATE] {self.owner.name} received BSM result: {info}")
         assert info['info_type'] == "BSM_res"
 
         res = info["res"]
@@ -275,6 +352,7 @@ class BarretKokB(EntanglementGenerationB):
         resolution = bsm.resolution
 
         for node in self.others:
+            print(f"[BKB SEND] {self.owner.name} -> {node}, detector={res}")
             message = EntanglementGenerationMessage(GenerationMsgType.MEAS_RES,
                                                     receiver=None,  # receiver is None (not paired)
                                                     protocol_type=self.protocol_type,

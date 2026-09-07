@@ -9,6 +9,7 @@ from __future__ import annotations
 from math import inf
 from typing import TYPE_CHECKING, Any
 
+from ..entanglement_management.teleportation import TeleportMsgType
 import numpy as np
 
 if TYPE_CHECKING:
@@ -133,7 +134,7 @@ class Node(Entity):
 
         self.qchannels[another] = qchannel
 
-    def send_message(self, dst: str, msg: "Message", priority=inf, sender_delay: int = 0) -> None:
+    def send_message(self, dst: str, msg: Message, priority=inf, sender_delay: int = 0) -> None:
         """Method to send classical message.
 
         Args:
@@ -154,7 +155,7 @@ class Node(Entity):
             priority = self.timeline.schedule_counter
         self.cchannels[dst].transmit(msg, self, priority, sender_delay)
 
-    def receive_message(self, src: str, msg: "Message") -> None:
+    def receive_message(self, src: str, msg: Message) -> None:
         """Method to receive message from classical channel.
 
         Searches through attached protocols for those matching message, then invokes `received_message` method of protocol(s).
@@ -177,6 +178,7 @@ class Node(Entity):
                 if protocol.name == msg.receiver and protocol.received_message(src, msg):
                     return
         else:
+            
             matching = [p for p in self.protocols if p.protocol_type == msg.protocol_type]
             for p in matching:
                 p.received_message(src, msg)
@@ -366,7 +368,7 @@ class QuantumRouter(Node):
         self.swapping_degradation = swapping_args.get("swapping_degradation", None)
 
 
-    def receive_message(self, src: str, msg: "Message") -> None:
+    def receive_message(self, src: str, msg: Message) -> None:
         """Determine what to do when a message is received, based on the msg.receiver.
 
         Args:
@@ -394,10 +396,21 @@ class QuantumRouter(Node):
                 for p in matching:    # the valid_trigger_time() function resolves multiple matching issue
                     p.received_message(src, msg)
             else:
+                print("\n===== PROTOCOL DISPATCH =====")
+                print("Node           :", self.name)
+                print("Message receiver:", msg.receiver)
+                print("Protocols      :", [p.name for p in self.protocols])
+                found=False
                 for protocol in self.protocols:
                     if protocol.name == msg.receiver:
+                        print("MATCH FOUND    :", protocol.name)
+                        print("Calling        : protocol.received_message()")
                         protocol.received_message(src, msg)
+                        found=True
                         break
+                if not found:
+                    print("!!! PROTOCOL NOT FOUND !!!")
+                    print("Expected       :", msg.receiver)
 
     def send_message(self, dst: str, msg: "Message", priority=inf, sender_delay: int = 0) -> None:
         """Method to send a classical message.
@@ -417,7 +430,24 @@ class QuantumRouter(Node):
         log.logger.info(f"{self.name}: send message {msg} to {dst}")
         if priority == inf:
             priority = self.timeline.schedule_counter
-        self.cchannels[dst].transmit(msg, self, priority, sender_delay)
+        if (msg.receiver == "teleport_app" and dst not in self.cchannels):
+            next_hop = self.xy_routing.next_hop(dst)
+
+            print(
+                f"===== TELEPORT FORWARD =====\n"
+                f"Current node : {self.name}\n"
+                f"Final dst    : {dst}\n"
+                f"Next hop     : {next_hop}\n"
+                f"============================"
+            )
+
+            self.cchannels[next_hop].transmit(
+                msg, self, priority, sender_delay
+            )
+        else:
+            self.cchannels[dst].transmit(
+                msg, self, priority, sender_delay
+            )
 
     def set_down(self, down: bool):
         """Method to set the node status.
@@ -927,24 +957,132 @@ class DQCNode(QuantumRouter):
         log.logger.info(f"{self.name} receive message {msg} from {src}")
 
         if msg.receiver == "network_manager":
+
             self.network_manager.received_message(src, msg)
+
         elif msg.receiver == "resource_manager":
+
             self.resource_manager.received_message(src, msg)
+
         elif msg.receiver == "xy_routing":
+
             self.xy_routing.received_message(src, msg)
+
         elif msg.receiver == "teleport_app":
-            self.teleport_app.received_message(src, msg)
-        elif msg.receiver == "teledata_app":
-            self.teledata_app.received_message(src, msg)
-        elif msg.receiver == "telegate_app":
-            self.telegate_app.received_message(src, msg)
-        else:
-            if msg.receiver is None:  # the msg sent by EntanglementGenerationB doesn't have a receiver (EGA & EGB not paired)
-                matching = [p for p in self.protocols if p.protocol_type == msg.protocol_type]
-                for p in matching:    # the valid_trigger_time() function resolves multiple matching issue
-                    p.received_message(src, msg)
+
+            print("\n===== TELEPORT APP DISPATCH =====")
+            print("Node        :", self.name)
+            print("Source      :", src)
+            print("Msg type    :", getattr(msg, "msg_type", None))
+            print("TeleportApp :", self.teleport_app)
+            print("=================================")
+
+            if self.teleport_app is not None:
+                
+
+                self.teleport_app.received_message(src, msg)
+
+                
+
             else:
-                for protocol in self.protocols:
-                    if protocol.name == msg.receiver:
-                        protocol.received_message(src, msg)
-                        break
+                # Intermediate router
+                if hasattr(msg, "reservation") and msg.reservation is not None:
+                    if msg.msg_type == TeleportMsgType.MEASUREMENT_RESULT:
+                        destination = msg.reservation.responder
+
+                    elif msg.msg_type == TeleportMsgType.ACK:
+                        destination = msg.reservation.initiator
+                    next_hop = self.xy_routing.next_hop(destination)
+
+                    print("\n===== TELEPORT MESSAGE FORWARD =====")
+                    print("Current node :", self.name)
+                    print("Source       :", src)
+                    print("Destination  :", destination)
+                    print("Next hop     :", next_hop)
+                    print("====================================")
+
+                    if next_hop is not None and next_hop != self.name:
+                        self.send_message(next_hop, msg)
+                    else:
+                        print("ERROR: No valid next hop for teleport message")
+
+        elif msg.receiver == "teledata_app":
+
+            self.teledata_app.received_message(src, msg)
+
+        elif msg.receiver == "telegate_app":
+
+            self.telegate_app.received_message(src, msg)
+        elif msg.receiver is not None and msg.receiver.startswith("EGA."):
+            protocol = next(
+                (p for p in self.protocols if p.name == msg.receiver),
+                None
+            )
+
+            if protocol is not None:
+                print("\n===== EGA MESSAGE DISPATCH =====")
+                print("Node     :", self.name)
+                print("Protocol :", protocol.name)
+                print("Source   :", src)
+                print("Msg type :", msg.msg_type)
+                print("================================")
+
+                protocol.received_message(src, msg)
+
+            else:
+                print("\n===== EGA PROTOCOL NOT FOUND =====")
+                print("Node     :", self.name)
+                print("Receiver :", msg.receiver)
+                print("Protocols:", [p.name for p in self.protocols])
+        elif msg.receiver is None and hasattr(msg, "protocol_type"):
+            protocols = [
+                p for p in self.protocols
+                if (
+                    getattr(p, "protocol_type", None) == msg.protocol_type
+                    and getattr(p, "middle", None) == src
+                )
+            ]
+
+            if protocols:
+                print("\n===== EGA MEAS_RES DISPATCH =====")
+                print("Node     :", self.name)
+                print("Source   :", src)
+                print("Msg type :", msg.msg_type)
+                print("Protocol :", protocols[0].name)
+                print("==================================")
+
+                protocols[0].received_message(src, msg)
+
+            else:
+                print("\n===== EGA MEAS_RES PROTOCOL NOT FOUND =====")
+                print("Node     :", self.name)
+                print("Source   :", src)
+                print("Protocol :", msg.protocol_type)
+        elif msg.receiver is not None and msg.receiver.startswith("ESB."):
+            print("\n===== ESB MESSAGE DISPATCH =====")
+            print("Node     :", self.name)
+            print("Receiver :", msg.receiver)
+            print("Source   :", src)
+            print("Msg type :", getattr(msg, "msg_type", None))
+            print("Protocols:", [p.name for p in self.protocols])
+            print("================================")
+
+            protocol = next(
+                (p for p in self.protocols if p.name == msg.receiver),
+                None
+            )
+
+            if protocol is not None:
+                print("===== ESB MATCH FOUND =====")
+                print("Protocol :", protocol.name)
+                print("Calling  : received_message()")
+                print("============================")
+
+                protocol.received_message(src, msg)
+
+            else:
+                print("===== ESB PROTOCOL NOT FOUND =====")
+                print("Expected :", msg.receiver)
+                print("Protocols:", [p.name for p in self.protocols])
+        else:
+            ...

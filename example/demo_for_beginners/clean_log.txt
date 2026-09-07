@@ -1,0 +1,9 @@
+0                    DEBUG   teleport_app           alice.TeleportApp: initialized
+0                    DEBUG   teleport_app           bob.TeleportApp: initialized
+0                    DEBUG   teleport_app           alice.TeleportApp: start() -> responder=bob, data_memory_index=0
+0                    DEBUG   teleportation          alice.teleport.bob.DataMemoryArray[0]: initialized (data_memory=0)
+1,000,000,000        DEBUG   teleport_app           alice.TeleportApp: reservation_result -> True
+100,000,000,000      DEBUG   teleport_app           bob.TeleportApp: get_memory, name=bob.MemoryArray[0], state=RAW
+100,000,000,000      DEBUG   teleport_app           bob.TeleportApp: get_memory, name=bob.MemoryArray[0], state=RAW
+100,000,000,000      DEBUG   teleport_app           alice.TeleportApp: get_memory, name=alice.MemoryArray[0], state=RAW
+100,000,000,000      DEBUG   teleport_app           alice.TeleportApp: get_memory, name=alice.MemoryArray[0], state=RAW

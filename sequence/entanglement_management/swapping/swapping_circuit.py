@@ -128,8 +128,15 @@ class EntanglementSwappingA_Circuit(EntanglementSwappingA):
         self.owner.send_message(self.left_node, msg_l)
         self.owner.send_message(self.right_node, msg_r)
 
-        self.update_resource_manager(self.left_memo, MemoryInfo.RAW)
-        self.update_resource_manager(self.right_memo, MemoryInfo.RAW)
+        self.update_resource_manager_no_rules(
+            self.left_memo,
+            MemoryInfo.RAW
+        )
+
+        self.update_resource_manager_no_rules(
+            self.right_memo,
+            MemoryInfo.RAW
+        )
 
     @lru_cache(maxsize=128)
     def updated_fidelity(self, f1: float, f2: float) -> float:
@@ -199,7 +206,13 @@ class EntanglementSwappingB_Circuit(EntanglementSwappingB):
         """
 
         log.logger.debug(self.owner.name + f" protocol received_message from node {src}, fidelity={msg.fidelity}")
-
+        print("\n===== SWAP B RECEIVED =====")
+        print("Node          :", self.owner.name)
+        print("Memory        :", self.memory.name)
+        print("Received fidelity :", msg.fidelity)
+        
+        print("Remote BEFORE:", self.memory.entangled_memory)
+        print("===========================")
         assert src == self.remote_node_name
 
         if msg.fidelity > 0 and self.owner.timeline.now() < msg.expire_time:
@@ -214,6 +227,23 @@ class EntanglementSwappingB_Circuit(EntanglementSwappingB):
             self.memory.entangled_memory["node_id"] = msg.remote_node
             self.memory.entangled_memory["memo_id"] = msg.remote_memo
             self.memory.update_expire_time(msg.expire_time)
+            
+            print("\n===== SWAP B SETTING ENTANGLED =====")
+            print("Node     :", self.owner.name)
+            print("Memory   :", self.memory.name)
+            print("Fidelity :", self.memory.fidelity)
+            print("Remote   :", self.memory.entangled_memory)
+            
+            print("====================================")
+
             self.update_resource_manager(self.memory, MemoryInfo.ENTANGLED)
+
         else:
+            print("\n===== SWAP B SETTING RAW =====")
+            print("Node     :", self.owner.name)
+            print("Memory   :", self.memory.name)
+            print("Msg fidelity :", msg.fidelity)
+            
+            print("==============================")
             self.update_resource_manager(self.memory, MemoryInfo.RAW)
+

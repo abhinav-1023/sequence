@@ -3,14 +3,17 @@
     It includes the core logic for Alice's and Bob's sides of the teleportation process,
     handling entangled states, and applying corrections based on classical messages.
 """
-
+from __future__ import annotations
 from enum import Enum, auto
 from ..components.circuit import Circuit
 from ..components.memory import Memory
 from ..message import Message
 from ..utils import log
 from ..protocol import Protocol
-from ..topology.node import DQCNode
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..topology.node import DQCNode
 from ..network_management.reservation import Reservation
 
 
@@ -31,6 +34,7 @@ class TeleportMessage(Message):
         z_flip (int): MEASUREMENT_RESULT only, whether to apply Z correction (1 for yes, 0 for no).
     """
     def __init__(self, msg_type: TeleportMsgType, **kwargs):
+
         super().__init__(msg_type, 'teleport_app')  # this app name must match what TeleportApp expects
 
         if msg_type is TeleportMsgType.MEASUREMENT_RESULT:
@@ -108,6 +112,12 @@ class TeleportProtocol(Protocol):
         self.bob_comm_memory: Memory = None
         self.source_comm_memory: Memory = None
         log.logger.debug(f"{self.name}: initialized (data_memory={data_memory_index})")
+        self.twh_preparation = False
+        self.twh_prepared = False
+        self.twh_reservation = None
+
+        self.twh_data = False
+        self.twh_edge = None
 
     def set_alice_comm_memory_name(self, memory_name: str):
         """Set the communication memory for Alice.
@@ -172,7 +182,15 @@ class TeleportProtocol(Protocol):
         log.logger.info(f"{self.name} bell measurement results: x={x}, z={z}, remote memory={self.bob_comm_memory_name}")
         # send classical corrections to Bob
         msg = TeleportMessage(TeleportMsgType.MEASUREMENT_RESULT, bob_comm_memory_name=self.bob_comm_memory_name, x_flip=x, z_flip=z, reservation=reservation)
-        self.owner.send_message(self.remote_node_name, msg)
+        routing_protocol = self.owner.network_manager.get_routing_protocol()
+        next_hop = routing_protocol.next_hop(self.remote_node_name)
+
+        print(
+            f"TELEPORT ROUTING: {self.owner.name} -> "
+            f"{self.remote_node_name} via {next_hop}"
+        )
+
+        self.owner.send_message(next_hop, msg)
         print(f"Bell measurement executed on {self.owner.name}")
 
     def received_message(self, src: str, msg: TeleportMessage):
@@ -231,7 +249,10 @@ class TeleportProtocol(Protocol):
         print("teleport_app type =", type(self.owner.teleport_app))
         print("teleport_app =", self.owner.teleport_app)
 
-        self.owner.teleport_app.teleport_complete(bob_comm_memory_key)
+        self.owner.teleport_app.teleport_complete(
+    bob_comm_memory_key,
+    self.bob_comm_memory
+)
 
     def bob_acknowledge_complete(self, reservation: Reservation):
         """Acknowledge the completion of the teleportation process.
@@ -240,5 +261,13 @@ class TeleportProtocol(Protocol):
             reservation (Reservation): The reservation object associated with the teleportation.
         """
         msg = TeleportMessage(TeleportMsgType.ACK, bob_comm_memory_name=self.bob_comm_memory_name, reservation=reservation)
-        self.owner.send_message(self.remote_node_name, msg)
+        routing_protocol = self.owner.network_manager.get_routing_protocol()
+        next_hop = routing_protocol.next_hop(self.remote_node_name)
+
+        print(
+            f"TELEPORT ACK ROUTING: {self.owner.name} -> "
+            f"{self.remote_node_name} via {next_hop}"
+        )
+
+        self.owner.send_message(next_hop, msg)
         log.logger.debug(f"{self.name}: sent ACK to {self.remote_node_name}")

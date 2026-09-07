@@ -1,6 +1,8 @@
 from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING
+from sequence.kernel.event import Event
+from sequence.kernel.process import Process
 
 
 if TYPE_CHECKING:
@@ -159,6 +161,28 @@ class RSVPProtocol(StackProtocol):
                 if self.owner.name == msg.reservation.responder:
                     self.accepted_reservations.append(msg.reservation)
                     msg.reservation.set_path(path)
+                    routing = self.owner.network_manager.get_routing_protocol()
+
+                    routing.reserve_path(
+                        path,
+                        load=msg.reservation.memory_size
+                    )
+                    print("CONGESTION AFTER RESERVE:", routing.owner.timeline.congestion_table)
+                    release_process = Process(
+                        routing,
+                        "release_path",
+                        [path, msg.reservation.memory_size]
+                    )
+
+                    release_event = Event(
+                        msg.reservation.end_time,
+                        release_process
+                    )
+
+                    self.owner.timeline.schedule(release_event)
+                    print("\n===== FINAL RESERVATION PATH =====")
+                    print(path)
+                    print("===============================")
                     new_msg = RSVPMessage(RSVPMsgType.APPROVE, self.name, msg.reservation, path=path)
                     self._pop(msg=new_msg)
                     self._push(dst=None, msg=new_msg, next_hop=src)

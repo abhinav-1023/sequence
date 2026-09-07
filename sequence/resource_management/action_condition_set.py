@@ -186,9 +186,16 @@ def eg_rule_condition(memory_info: MemoryInfo, _manager: MemoryManager, args: Ar
     Returns:
         list[MemoryInfo]: the list of MemoryInfo that satisfy the condition
     """
-    memory_indices = args["memory_indices"]
+
     
     memory_indices = args["memory_indices"]
+    print("\n===== EG CONDITION CHECK =====")
+    print("Memory       :", memory_info.memory.name)
+    print("State        :", memory_info.state)
+    print("Remote       :", memory_info.remote_node)
+    print("Index        :", memory_info.index)
+    print("Args         :", args)
+    print("==============================")
     if memory_info.state == "RAW" and memory_info.index in memory_indices:
         return [memory_info]
     else:
@@ -484,14 +491,12 @@ def es_rule_condition_A(memory_info: MemoryInfo, memory_manager: MemoryManager, 
     # the first memory is the "left hand side" memory during swapping
     if (memory_info.state in ["ENTANGLED", "PURIFIED"]
             and memory_info.index in memory_indices
-            and memory_info.remote_node == remote_left_node
-            and memory_info.fidelity >= fidelity):
+            and memory_info.remote_node == remote_left_node):
         for memory_info_2 in memory_manager:
             # the second memory is the "right hand side" memory during swapping
             if (memory_info_2.state in ["ENTANGLED", "PURIFIED"]
                     and memory_info_2.index in memory_indices
-                    and memory_info_2.remote_node == remote_right_node
-                    and memory_info_2.fidelity >= fidelity):
+                    and memory_info_2.remote_node == remote_right_node):
                 return [memory_info, memory_info_2]
     
     # case 2: memory_info is the "right hand side" memory
@@ -499,13 +504,13 @@ def es_rule_condition_A(memory_info: MemoryInfo, memory_manager: MemoryManager, 
     if (memory_info.state in ["ENTANGLED", "PURIFIED"]
             and memory_info.index in memory_indices
             and memory_info.remote_node == remote_right_node
-            and memory_info.fidelity >= fidelity):
+            ):
         for memory_info_2 in memory_manager:
             # the second memory is the "left hand side" memory during swapping
             if (memory_info_2.state in ["ENTANGLED", "PURIFIED"]
                     and memory_info_2.index in memory_indices
                     and memory_info_2.remote_node == remote_left_node
-                    and memory_info_2.fidelity >= fidelity):
+                    ):
                 return [memory_info, memory_info_2]
     
     return []
